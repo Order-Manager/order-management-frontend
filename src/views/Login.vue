@@ -38,7 +38,7 @@
                 sendSignInLinkToEmail(auth, email, actionCodeSettings)
                     .then(() => {
                         window.localStorage.setItem('emailForSignIn', email);
-                        successMessage.textContent = 'Email sent';
+                        successMessage.textContent = 'A login link has been sent to your email address. Please check your inbox.';
                         successMessage.style.display = 'block';
                     })
                     .catch((error) => {
@@ -79,19 +79,30 @@
 </script>
 
 <template>
+    <div id="mask"></div>
     <div class="center-column full-size">
         <div id="login-content" class="center-column">
             <input type="email" id="email" placeholder="Email" pattern=".+devinci\.fr" required />
             <p id="email-error" class="error-message">Please enter a valid email address</p>
             <button id="login-button" v-on:click="signIn()">Login</button>
         </div>
-        <p id="error" class="error-message"></p>
-        <p id="success" class="success-message"></p>
+        <p id="error" class="login-message error-message"></p>
+        <p id="success" class="login-message success-message"></p>
     </div>
 </template>
 
 <style>
+    #mask {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 100;
+    }
     #login-content {
+        z-index: 101;
         /* width: 8rem; */
         height: 6rem;
         background-color: var(--color-primary);
@@ -100,6 +111,10 @@
         display: flex;
         flex-direction: column;
         justify-content: space-between;
+        border-radius: 0.5rem;
+    }
+    .login-message {
+        z-index: 101;
     }
 
 
@@ -109,11 +124,11 @@
 
     .error-message {
         display: none;
-        color: red;
+        color: rgb(255, 133, 133);
     }
 
     .success-message {
         display: none;
-        color: green;
+        color: rgb(152, 255, 152);
     }
 </style>

@@ -22,7 +22,6 @@ export default {
         query(
           // you can pass a query into useCollection
           collection(db, "orders"), // go to the sessions collection
-          where("requestedBy", "==", currentUser.value.email), // only get the ones that belong to the user.
           orderBy("creationDate", "desc") // order by creation date descending
         )
       );
@@ -37,14 +36,13 @@ export default {
         query(
           // you can pass a query into useCollection
           collection(db, "orders"), // go to the sessions collection
-          where("requestedBy", "==", currentUser.value.email), // only get the ones that belong to the user.
           orderBy("lastUpdate", "desc") // order by creation date descending
         )
       );
       this.sortedByCreationDate = false;
     },
-    viewAll() {
-      this.$router.push("/all");
+    viewMyOrders() {
+      this.$router.push("/");
     },
   },
   setup() {
@@ -97,7 +95,6 @@ export default {
         query(
           // you can pass a query into useCollection
           collection(db, "orders"), // go to the sessions collection
-          where("requestedBy", "==", currentUser.value.email), // only get the ones that belong to the user.
           orderBy("lastUpdate", "desc") // order by creation date descending
         )
       );
@@ -116,7 +113,7 @@ export default {
     >
       {{ showCompleted ? "Hide" : "Show" }} completed
     </button>
-    <button v-if="userData && (userData.isPI || userData.isRE)" v-on:click="viewAll()">View all orders</button>
+    <button v-if="userData && (userData.isPI || userData.isRE)" v-on:click="viewMyOrders()">View my orders</button>
     <button class="alt-button" id="new-order" v-on:click="createNewOrder()">
       New order
     </button>

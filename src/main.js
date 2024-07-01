@@ -9,6 +9,7 @@ import "./style.css";
 import App from "./App.vue";
 
 import OrdersList from "./views/OrdersList.vue";
+import OrdersListAdmin from "./views/OrdersListAdmin.vue";
 import OrderCreation from "./views/OrderCreation.vue";
 import OrderView from "./views/OrderView.vue";
 import Login from "./views/Login.vue";
@@ -27,6 +28,11 @@ import {
 const routes = [{
         path: "/",
         component: OrdersList,
+        meta: { requiresAuth: true }
+    },
+    {
+        path: "/all",
+        component: OrdersListAdmin,
         meta: { requiresAuth: true }
     },
     {

@@ -16,12 +16,15 @@ export default {
 <style>
 
 footer {
-    position: fixed;
+    position: absolute;
     bottom: 0;
-    width: 100%;
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    width: calc(100% - 4rem);
     background-color: var(--color-primary);
-    height: 4rem;
     padding: 0 2rem;
+    height: 4rem;
 }
 
 </style>
