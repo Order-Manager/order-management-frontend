@@ -62,7 +62,7 @@ const updateTypesToMessage = {
     'review-pi-approved': "Approved by a Principal Investigator",
     'review-pi-refused': "Refused by a Principal Investigator",
     'order-processed': "Order Processed",
-    'order-received': "Order delivered, waiting for pick up",
+    'order-received': "Order Delivered, waiting for pick up",
     'order-completed': "Order completed"
 }
 
@@ -87,6 +87,36 @@ const statusTypesToColor = {
     "received": "blue",
     "completed": "green",
 };
+
+const updateTypesToColor = {
+    "order-creation": "blue",
+    "order-cancelled": "red",
+    "comment": "blue",
+    "waiting-for-reply": "orange",
+    "review-ir-approved": "blue",
+    "review-ir-refused": "red",
+    "review-pi-requested": "orange",
+    "review-pi-approved": "blue",
+    "review-pi-refused": "red",
+    "order-processed": "blue",
+    "order-received": "blue",
+    "order-completed": "green"
+}
+
+const updateTypesToIcon = {
+    "order-creation": "add",
+    "order-cancelled": "close",
+    "comment": "comment",
+    "waiting-for-reply": "hourglass",
+    "review-ir-approved": "check",
+    "review-ir-refused": "close",
+    "review-pi-requested": "hourglass",
+    "review-pi-approved": "check",
+    "review-pi-refused": "close",
+    "order-processed": "check",
+    "order-received": "check",
+    "order-completed": "check"
+}
 
 export default {
     components: {
@@ -175,13 +205,15 @@ export default {
             // console.log(orderRef)
         },
         addComment() {
-            // TODO: Add rule checks
-
             const db = useFirestore()
             const orderRef = doc(db, 'orders', this.order_id)
             const currentUser = useCurrentUser()
             const area = document.getElementById("comment-textarea")
             const comment = area.value
+
+            // TODO: Add rule checks
+            // TODO: Throw error if comment is empty or too long
+            if (comment.length == 0 || comment.length > 1000) return;
             updateDoc(orderRef, {
                 "updates": [
                     ...this.order.updates,
@@ -207,7 +239,7 @@ export default {
         const order = useDocument(doc(db, 'orders', order_id))
         const userData = useDocument(doc(db, 'admins', currentUser.value.uid))
         return {
-            order, order_id, updateTypesToMessage, statusTypesToMessage, userData, statusTypesToColor
+            order, order_id, updateTypesToMessage, statusTypesToMessage, userData, statusTypesToColor, updateTypesToColor, updateTypesToIcon
         }
     }
 }
@@ -238,6 +270,17 @@ export default {
             </div>
 
         </div>
+
+
+        <div class="center-column full-width">
+            <div class="center-row">
+                <span class="material-symbols-outlined">
+                    shopping_cart
+                </span>
+                <h2>&nbsp;items</h2>
+            </div>
+        </div>
+
         <div id="items-list" class="full-width">
             <table id="items" class="full-width">
                 <tr>
@@ -295,13 +338,13 @@ export default {
             <button
                 v-if="(userData && (userData.isPI || userData.isIR)) && ['processingOrder'].includes(order.status)"
                 v-on:click="setAsOrdered()">
-                Confirm order
+                Mark as ordered
             </button>
 
             <button
                 v-if="(userData && (userData.isPI || userData.isIR)) && ['ordered'].includes(order.status)"
                 v-on:click="setAsDelivered()">
-                Confirm delivery
+                Mark as delivered
             </button>
 
             <button
@@ -312,22 +355,46 @@ export default {
 
         </div>
 
+
         <div class="center-column full-width">
             <div class="center-row">
                 <span class="material-symbols-outlined">
                     history
                 </span>
-                <h2>Updates</h2>
+                <h2>&nbsp;Updates</h2>
             </div>
         </div>
-        <ul>
+
+
+        <ul id="updates">
             <li v-for="update in order.updates" :key="update.date.toDate().toLocaleString('en-GB')" class="update">
-                <div class="update-header">
-                    <h3 class="update-title">{{ updateTypesToMessage[update.type] }}</h3>
-                    <p class="update-author">&nbsp;by {{ update.author }}</p>
-                    <p class="update-date">, {{ update.date.toDate().toLocaleString('en-GB') }}</p>
+
+                <div v-if="update.type == 'comment'" class="update-comment">
+                    <div class="vline"></div>
+                    <!-- <div class="symbol">
+                        <span class="material-symbols-outlined">{{ updateTypesToIcon[update.type] ?  updateTypesToIcon[update.type] : 'notifications' }}</span>
+                    </div> -->
+                    <div class="update-comment-outer-border"></div>
+                    <div class="update-header">
+                        <!-- <h3 class="update-title">{{ updateTypesToMessage[update.type] }}&nbsp;</h3> -->
+                        <p class="update-title">{{ update.author }}&nbsp;</p>
+                        <p class="update-date">commented on the {{ update.date.toDate().toLocaleString('en-GB') }}</p>
+                    </div>
+                    <!-- <hr> -->
+                    <p class="update-message">{{ update.message }}</p>
                 </div>
-                <p class="update-message">{{ update.message }}</p>
+
+                <div v-if="update.type != 'comment'" class="update-notification">
+                    <div class="vline"></div>
+                    <div class="symbol">
+                        <span class="material-symbols-outlined">{{ updateTypesToIcon[update.type] ?  updateTypesToIcon[update.type] : 'notifications' }}</span>
+                    </div>
+                    <div class="update-header">
+                        <h3 class="update-title" :class="updateTypesToColor[update.type] ? updateTypesToColor[update.type] : 'red'">{{ updateTypesToMessage[update.type] }}&nbsp;</h3>
+                        <p class="update-author">by {{ update.author }},&nbsp;</p>
+                        <p class="update-date">{{ update.date.toDate().toLocaleString('en-GB') }}</p>
+                    </div>
+                </div>
             </li>
         </ul>
     </div>
@@ -342,6 +409,7 @@ export default {
 
 <style>
 
+
 .order-info label {
     width: 10rem;
 }
@@ -354,75 +422,6 @@ export default {
     flex-direction: row;
     align-items: baseline;
 }
-
-.update {
-    margin-top: 2rem;
-}
-
-.update-header {
-    display: flex;
-    flex-direction: row;
-    align-items: baseline;
-}
-
-.update-title {
-    color: var(--color-text-secondary);
-    font-weight: bold;
-    margin: 0;
-}
-
-.update-author {
-    color: var(--color-text-secondary);
-    font-style: italic;
-    font-size: 0.8rem;
-    margin: 0;
-}
-
-.update-date{
-    font-size: 0.8rem;
-    font-style: italic;
-    margin: 0;
-}
-
-.update-message {
-    font-size: 1rem;
-    margin: 0;
-    font-weight: 300;
-}
-
-#comment-div {
-    display: flex;
-    flex-direction: row;
-    align-items: flex-end;
-    width: 100%;
-}
-
-#comment-div textarea {
-    margin-top: 2rem;
-    width: 100%;
-}
-
-#comment-div span {
-    margin-left: 0.5rem;
-    font-size: 2rem;
-    cursor: pointer;
-}
-
-
-#pi-review-div {
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-}
-
-#approval-buttons {
-    display: flex;
-    width: 100%;
-    justify-content: space-between;
-    margin-top: 2rem;
-}
-
 
 
 #items td:nth-child(1) {
@@ -448,8 +447,172 @@ export default {
 
 #items-list {
     overflow-x: auto;
+    /* margin-top: 2rem; */
+}
+
+#pi-review-div {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#approval-buttons {
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+}
+
+#approval-buttons button {
     margin-top: 2rem;
 }
+
+#updates {
+    padding: 0;
+    height: fit-content;
+}
+
+.update {
+    position: relative;
+    padding: 1rem 0 1rem 0;
+    list-style-type: none;
+}
+
+.vline {
+    position: absolute;
+    top: 0;
+    left: 1.5rem;
+    bottom: 0;
+    border: 1.5px solid var(--color-text-primary);
+    z-index: 0;
+}
+
+.symbol {
+    position: absolute;
+    top: calc(50% - 1rem);
+    left: 0.4rem;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    border: 3px solid var(--color-secondary);
+    background-color: var(--color-text-primary);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.symbol > span {
+    color: var(--color-tertiary);
+    font-size: 1.5rem;
+}
+
+.update-notification {
+    padding-left: 3rem;
+}
+
+.update-header {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+}
+
+@media (max-width: 1024px) {
+    .update-header {
+        flex-direction: column;
+    }
+}
+
+.update-title {
+    color: var(--color-text-secondary);
+    font-weight: bold;
+    margin: 0;
+}
+
+.update-author {
+    color: var(--color-text-secondary);
+    font-style: italic;
+    font-size: 1rem;
+    margin: 0;
+}
+
+.update-date{
+    font-size: 1rem;
+    font-style: italic;
+    margin: 0;
+}
+
+.update-message {
+    font-size: 1rem;
+    margin: 0;
+    font-weight: 400;
+}
+
+.update-comment-outer-border {
+    position: absolute;
+    top: calc(1rem - 3px);
+    left: calc(0px - 3px);
+    right: calc(0px - 3px);
+    bottom: calc(1rem - 3px);
+    border: 3px solid var(--color-secondary);
+    border-radius: 0.5rem;
+}
+
+.update-comment {
+    padding: 0 !important;
+    background-color: var(--color-secondary);
+}
+
+.update-comment {
+    border: 3px solid var(--color-text-primary);
+    border-radius: 0.5rem;
+}
+
+.update-comment > hr{
+    /* background-color: var(--color-primary); */
+    border: 1px solid var(--color-tertiary);
+    border-radius: 0.5rem;
+    margin: 0;
+}
+
+.update-comment > .update-message {
+    position: relative;
+    padding: 0.75rem;
+    background-color: var(--color-secondary);
+    border-radius: 0.5rem;
+    white-space: pre-wrap;
+}
+
+.update-comment > .update-header {
+    position: relative;
+    padding: 0.75rem;
+    background-color: var(--color-text-primary);
+}
+
+.update-comment > .update-header > * {
+    color: var(--color-tertiary);
+}
+
+#comment-div {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-end;
+    width: 100%;
+}
+
+#comment-div textarea {
+    width: 100%;
+    height: 5rem;
+    border: 3px solid var(--color-text-primary);
+}
+
+#comment-div span {
+    margin-left: 0.5rem;
+    font-size: 2rem;
+    cursor: pointer;
+}
+
+
+
 
 /* # {
     grid-template-columns: 1fr 1fr 1fr 1fr;

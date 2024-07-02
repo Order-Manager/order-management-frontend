@@ -51,6 +51,12 @@ export default {
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     }
 
+    @media (max-width: 1024px) {
+        nav {
+            padding: 0 1em;
+        }
+    }
+
     #right-nav-section {
         display: flex;
         align-items: center;

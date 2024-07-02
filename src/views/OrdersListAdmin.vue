@@ -121,12 +121,12 @@ export default {
   <div id="orders-list">
     <table id="orders">
       <tr>
+        <th>Status</th>
         <th>Title</th>
         <th>Requested by</th>
-        <th v-on:click="sortByCreationDate()">Creation Date</th>
         <th v-on:click="sortByLastUpdate()">Last Update</th>
+        <th v-on:click="sortByCreationDate()">Creation Date</th>
         <th>Supplier</th>
-        <th>Status</th>
       </tr>
       <tr
         v-on:click="goToOrder(order.id)"
@@ -134,12 +134,12 @@ export default {
         v-for="order in orders"
         :key="order.creationDate.toDate().toLocaleString('en-GB')"
       >
+        <td :class="statusTypesToColor[order.status] ? statusTypesToColor[order.status] : 'red'">{{ statusTypesToMessage[order.status] ? statusTypesToMessage[order.status] : "Unknown Status" }}</td>
         <td>{{ order.title }}</td>
         <td>{{ order.requestedBy }}</td>
-        <td>{{ order.creationDate.toDate().toLocaleString("en-GB") }}</td>
         <td>{{ order.lastUpdate.toDate().toLocaleString("en-GB") }}</td>
+        <td>{{ order.creationDate.toDate().toLocaleString("en-GB") }}</td>
         <td>{{ order.supplier }}</td>
-        <td :class="statusTypesToColor[order.status] ? statusTypesToColor[order.status] : 'red'">{{ statusTypesToMessage[order.status] ? statusTypesToMessage[order.status] : "Unknown Status" }}</td>
       </tr>
     </table>
   </div>

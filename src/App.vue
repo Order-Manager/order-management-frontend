@@ -33,4 +33,10 @@ div.active {
   max-width: 100%;
 }
 
+@media (max-width: 1024px) {
+  #main-view {
+    padding: 2rem 0.5rem 6rem 0.5rem;
+  }
+}
+
 </style>

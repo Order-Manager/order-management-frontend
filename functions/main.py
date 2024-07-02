@@ -65,12 +65,22 @@ def updateLastUpdate(event: firestore_fn.Event[firestore_fn.DocumentSnapshot | N
                 "author": after.get("reviewIRBy")
             }
 
+            current_updates.append(update)
+
             if after.get("requiresReviewPI"):
                 status = "pendingPI"
+
+                update = {
+                    "type": "review-pi-requested",
+                    "date": datetime.datetime.now(),
+                    "author": after.get("reviewIRBy")
+                }
+
+                current_updates.append(update)
+
             else:
                 status = "processingOrder"
 
-            current_updates.append(update)
 
             event.data.after.reference.update({
                 "status": status,
