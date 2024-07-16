@@ -11,9 +11,9 @@ export default {
 
 <template>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-    <div>
-        <span class="material-symbols-outlined" id="return-button" v-on:click="moveBack()">undo</span>
-    </div>
+    <button style="padding: 0;"  v-on:click="moveBack()" v-on:keyup.enter="moveBack()">
+        <span class="material-symbols-outlined" id="return-button">undo</span>
+    </button>
 </template>
 
 
@@ -27,13 +27,8 @@ export default {
     }
 
     #return-button {
-        margin-bottom: 1rem;
+        margin: 0;
+        padding: 0.4rem 1rem;
         color: var(--color-text-primary);
-        border-radius: 1rem;
-        padding: 0.4em 0.6em;
-        background-color: #f9f9f9;
-        cursor: pointer;
-        transition: border-color 0.25s;
-
     }
 </style>

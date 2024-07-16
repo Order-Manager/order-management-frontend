@@ -81,6 +81,10 @@ button:focus, input:focus, select:focus, textarea:focus {
   border-color: var(--color-text-primary);
 }
 
+.alt-button:hover, .alt-button:active, .alt-button:focus {
+  border-color: var(--color-tertiary);
+}
+
 label {
   font-size: 1.2em;
   font-weight: 500;
@@ -178,6 +182,52 @@ tr {
 tr:hover {
   background-color: var(--color-secondary) !important;
   /* border-color: var(--color-text-primary); */
+}
+
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.table-header {
+  display: grid;
+  width: 100%;
+
+  background-color: var(--color-primary);
+  font-weight: bold;
+}
+
+.table-header p {
+  color: var(--color-text-primary) !important;
+  white-space: nowrap;
+}
+
+.table p {
+  padding: 0.5rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  margin: 0;
+}
+
+
+.table-row {
+  display: grid;
+
+  background-color: var(--color-tertiary);
+  border: 3px solid transparent;
+  padding: 0.2rem;
+}
+
+.table-row:hover, .table-row:focus, .table-row:active {
+  border: 3px solid var(--color-text-primary);
+  outline: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
 }
 
 /* The switch - the box around the slider */

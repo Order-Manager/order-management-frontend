@@ -282,24 +282,25 @@ export default {
         </div>
 
         <div id="items-list" class="full-width">
-            <table id="items" class="full-width">
-                <tr>
+            <div class="table">
+                <div class="table-header orderview-table">
                     <th>Name</th>
                     <th>Link</th>
                     <th>Quantity</th>
                     <th>Price</th>
-                </tr>
-                <tr
-                v-for="item in order.items"
-                :key="item.name"
+                </div>
+                <div
+                    class="table-row orderview-table"
+                    v-for="item in order.items"
+                    :key="item.name"
                 >
-                    <td>{{ item.name }}</td>
-                    <td class="link"><a :href="item.link" target=”_blank” >{{ item.link }}</a></td>
-                    <td>{{ item.quantity }}</td>
-                    <td>{{ item.price }}</td>
+                    <p>{{ item.name }}</p>
+                    <p class="link"><a :href="item.link" target=”_blank” >{{ item.link }}</a></p>
+                    <p>{{ item.quantity }}</p>
+                    <p>{{ item.price }}</p>
 
-                </tr>
-            </table>
+                </div>
+            </div>
         </div>
 
 
@@ -423,32 +424,10 @@ export default {
     align-items: baseline;
 }
 
-
-#items td:nth-child(1) {
-    white-space: nowrap;
-
-}
-
-#items td:nth-child(2) {
-    display: table;
-    table-layout: fixed;
-    width: 100%;
-    padding: 0.5em 0;
-    border: 0;
-
-}
-
-#items td:nth-child(2) a {
-    display: block;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    overflow: hidden;
-    padding: 0.5em 0;
-}
-
-#items-list {
-    overflow-x: auto;
-    /* margin-top: 2rem; */
+.orderview-table {
+    border: 3px solid transparent !important;
+    grid-template-columns: 3fr 8fr 1fr 1fr;
+    cursor: initial !important;
 }
 
 #pi-review-div {
@@ -603,6 +582,10 @@ export default {
 #comment-div textarea {
     width: 100%;
     height: 5rem;
+    border: 1px solid var(--color-text-primary);
+}
+
+#comment-div textarea:focus {
     border: 3px solid var(--color-text-primary);
 }
 

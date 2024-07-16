@@ -4,42 +4,12 @@ import { ref } from "vue";
 import { useDocument, useCollection, useFirestore, useCurrentUser } from "vuefire";
 import { doc, collection, where, query, orderBy } from "firebase/firestore";
 
+import Orders from "../components/Orders.vue";
+
 export default {
   methods: {
     createNewOrder() {
       this.$router.push("/create");
-    },
-    goToOrder(id) {
-      console.log(this.orders);
-      this.$router.push(`/view/${id}`);
-    },
-    sortByCreationDate() {
-      const db = useFirestore();
-      const currentUser = useCurrentUser();
-
-      if (this.sortedByCreationDate) return;
-      this.orders = useCollection(
-        query(
-          // you can pass a query into useCollection
-          collection(db, "orders"), // go to the sessions collection
-          orderBy("creationDate", "desc") // order by creation date descending
-        )
-      );
-      this.sortedByCreationDate = true;
-    },
-    sortByLastUpdate() {
-      const db = useFirestore();
-      const currentUser = useCurrentUser();
-
-      if (!this.sortedByCreationDate) return;
-      this.orders = useCollection(
-        query(
-          // you can pass a query into useCollection
-          collection(db, "orders"), // go to the sessions collection
-          orderBy("lastUpdate", "desc") // order by creation date descending
-        )
-      );
-      this.sortedByCreationDate = false;
     },
     viewMyOrders() {
       this.$router.push("/");
@@ -102,6 +72,9 @@ export default {
     const showCompleted = ref(true);
     return { userData, completedStatuses, showCompleted, orders, sortedByCreationDate, statusTypesToMessage, statusTypesToColor };
   },
+  components: {
+    Orders,
+  },
 };
 </script>
 
@@ -119,29 +92,7 @@ export default {
     </button>
   </div>
   <div id="orders-list">
-    <table id="orders">
-      <tr>
-        <th>Status</th>
-        <th>Title</th>
-        <th>Requested by</th>
-        <th v-on:click="sortByLastUpdate()">Last Update</th>
-        <th v-on:click="sortByCreationDate()">Creation Date</th>
-        <th>Supplier</th>
-      </tr>
-      <tr
-        v-on:click="goToOrder(order.id)"
-        v-show="!completedStatuses.includes(order.status) || showCompleted"
-        v-for="order in orders"
-        :key="order.creationDate.toDate().toLocaleString('en-GB')"
-      >
-        <td :class="statusTypesToColor[order.status] ? statusTypesToColor[order.status] : 'red'">{{ statusTypesToMessage[order.status] ? statusTypesToMessage[order.status] : "Unknown Status" }}</td>
-        <td>{{ order.title }}</td>
-        <td>{{ order.requestedBy }}</td>
-        <td>{{ order.lastUpdate.toDate().toLocaleString("en-GB") }}</td>
-        <td>{{ order.creationDate.toDate().toLocaleString("en-GB") }}</td>
-        <td>{{ order.supplier }}</td>
-      </tr>
-    </table>
+    <Orders :orders="orders" :showCompleted="showCompleted" />
   </div>
 </template>
 

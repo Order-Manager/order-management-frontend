@@ -17,7 +17,7 @@
             signIn() {
                 const auth = getAuth();
                 const actionCodeSettings = {
-                    url: 'http://localhost:5173/#/login?cartId=1234',
+                    url: 'https://orders.thomasjuldo.com/#/login?cartId=1234',
                     handleCodeInApp: true,
                 };
                 const email = document.getElementById('email').value;
