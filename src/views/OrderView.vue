@@ -443,6 +443,7 @@ export default {
     text-overflow: ellipsis;
     white-space: nowrap;
     overflow: hidden;
+    padding: 0.5em 0;
 }
 
 #items-list {
