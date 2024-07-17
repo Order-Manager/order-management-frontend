@@ -189,15 +189,17 @@ tr:hover {
   width: 100%;
   border-collapse: collapse;
   border-radius: 0.5rem;
-  overflow: hidden;
+  overflow-x: scroll;
 }
 
 .table-header {
   display: grid;
-  width: 100%;
+  width: max(100%, 900px);
 
   background-color: var(--color-primary);
+  border: 3px solid transparent;
   font-weight: bold;
+  padding: 0.2rem;
 }
 
 .table-header p {
@@ -217,6 +219,7 @@ tr:hover {
 
 .table-row {
   display: grid;
+  width: max(100%, 900px);
 
   background-color: var(--color-tertiary);
   border: 3px solid transparent;
