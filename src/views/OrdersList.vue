@@ -6,6 +6,9 @@ import { doc, collection, where, query, orderBy } from "firebase/firestore";
 
 import Orders from "../components/Orders.vue";
 
+import { statusTypesToMessage, statusTypesToColor, completedStatuses } from '../utils/definitions.js'
+
+
 export default {
   methods: {
     createNewOrder() {
@@ -18,46 +21,6 @@ export default {
   setup() {
     const db = useFirestore();
     const currentUser = useCurrentUser();
-
-    const completedStatuses = ["completed", "refusedPI", "refusedIR"];
-
-    const statusTypesToMessage = {
-        "pendingIR": "Pending Reasearch Engineer review",
-        "pendingPI": "Pending Principal Investigator review",
-        "refusedPI": "Refused by a Principal Investigator",
-        "approvedPI": "Approved by a Principal Investigator",
-        "refusedIR": "Refused by a Reasearch Engineer",
-        "approvedIR": "Approved by a Reasearch Engineer",
-        "processingOrder": "Processing Order",
-        "ordered": "Ordered",
-        "received": "Waiting for Pick Up",
-        "completed": "Completed",
-    };
-    const statusTypesToColor = {
-        "pendingIR": "orange",
-        "pendingPI": "orange",
-        "refusedPI": "red",
-        "refusedIR": "red",
-        "processingOrder": "blue",
-        "ordered": "blue",
-        "received": "blue",
-        "completed": "green",
-    };
-    const updateTypesToMessage = {
-        'order-creation': "Order Created",
-        'order-cancelled': "Order Cancelled",
-        'comment': "Comment",
-        'waiting-for-reply': "Waiting for Reply",
-        'review-ir-approved': "Approved by a Reasearch Engineer",
-        'review-ir-refused': "Refused by a Reasearch Engineer",
-        'review-pi-requested': "Review by a Principal Investigator requested",
-        'review-pi-approved': "Approved by a Principal Investigator",
-        'review-pi-refused': "Refused by a Principal Investigator",
-        'order-processed': "Order Processed",
-        'order-received': "Order delivered, waiting for pick up",
-        'order-completed': "Order completed"
-    }
-    // const orders = useCollection(collection(db, 'orders'))
 
     const userData = useDocument(doc(db, 'admins', currentUser.value.uid))
 
