@@ -1,5 +1,6 @@
 <script>
     import Return from '../components/Return.vue'
+    import TagComponent from '../components/Tags.vue'
     import {
         ref
     } from 'vue'
@@ -16,9 +17,12 @@
         useCurrentUser
     } from "vuefire";
 
+    import { tagsTypes } from '../utils/definitions'
+
+
     export default {
         components: {
-            Return
+            Return, TagComponent
         },
         methods: {
             createOrder(email, uid) {
@@ -27,6 +31,9 @@
                 const comment = document.getElementById('comment').value
                 const db = useFirestore()
                 const items = []
+
+                const tags = this.selectedTags.map(tag => tag.id);
+                const priority = document.querySelector('input[name="priority"]:checked').value;
 
                 const l = Array.from(document.getElementById('items-list').children).slice(1)
                 const itemsList = l.filter(item => item.tagName === 'LI')
@@ -58,6 +65,7 @@
                     })
                 }
 
+
                 addDoc(collection(db, 'orders'), {
                     creationDate: new Date(),
                     lastUpdate: new Date(),
@@ -69,6 +77,8 @@
                     items: items,
                     comment: comment,
                     updates: [],
+                    tags: tags,
+                    priority: priority
                 })
 
                 this.$router.push('/')
@@ -88,6 +98,31 @@
                     <input type="text" name="price" required>
                 `
                 itemsList.appendChild(item)
+            },
+            openTab(type) {
+                const tabs = document.getElementsByClassName('tag-tab')
+                for (let tab of tabs) {
+                    tab.style.display = 'none'
+                }
+                document.getElementById(type).style.display = 'flex'
+
+                const buttons = document.getElementsByClassName('tag-type-button')
+                for (let button of buttons) {
+                    button.classList.remove('alt-button')
+                }
+                document.getElementById(type + '-type-button').classList.add('alt-button')
+            },
+            toggleTag(tag, type) {
+                const index = this.selectedTags.indexOf(tag)
+                const button = document.getElementById(type + '-' + tag.id + '-name-button')
+                if (index === -1) {
+                    this.selectedTags.push(tag)
+                    button.classList.add('alt-button')
+                } else {
+                    this.selectedTags.splice(index, 1)
+                    button.classList.remove('alt-button')
+                }
+
             }
         },
         setup() {
@@ -95,9 +130,16 @@
             const suppliers = useCollection(collection(db, 'suppliers'))
             const user = useCurrentUser()
 
+            const tags = useCollection(collection(db, 'tags'));
+            const selectedTags = ref([]);
+
             return {
-                suppliers, user
+                suppliers, user, tags, tagsTypes, selectedTags
             }
+        },
+        mounted() {
+            this.openTab('project');
+            console.log(this.tagsTypes)
         }
     }
 </script>
@@ -118,6 +160,32 @@
                     <option v-for="supplier in suppliers" :value="supplier.name" v-bind:key="supplier.name">
                         {{ supplier.name }}</option>
                 </select>
+            </div>
+            <div class="order-form-category">
+                <label class="category-label">Tags</label>
+                <div class="full-width">
+                    <div id="selected-tags">
+                        <span v-for="(tag, index) in selectedTags" :key="tag" class="tag">{{ tag.name }}  <span v-if="index != selectedTags.length - 1">, </span></span>
+                    </div>
+                    <TagComponent :selectedTags="selectedTags" />
+                </div>
+            </div>
+            <div class="order-form-category">
+                <label class="category-label">Priority level</label>
+                <div id="priority-div">
+                    <div>
+                        <input type="radio" id="low" name="priority" value="low" checked>
+                        <label for="low">Low</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="medium" name="priority" value="medium">
+                        <label for="medium">Medium</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="high" name="priority" value="high">
+                        <label for="high">High</label>
+                    </div>
+                </div>
             </div>
             <div class="order-form-category">
                 <label class="category-label" for="items-list">Items</label>
@@ -160,6 +228,65 @@
 
 
 <style>
+
+    #selected-tags {
+        display: flex;
+        flex-direction: row;
+
+        align-items: center;
+
+        background-color: var(--color-primary);
+        width: calc(100% - 2rem);
+        height: 2rem;
+        border-radius: 0.5rem;
+        padding: 0.5rem 1rem;
+    }
+
+    #selected-tags > span {
+        margin-right: 0.5rem;
+    }
+
+
+    .tag-tab {
+        display: none;
+        padding: 0.5rem 0;
+        gap: 0.5rem;
+    }
+
+    #tags-types-div {
+        display: flex;
+        flex-direction: row;
+        margin-top: 0.5rem;
+        width: 100%;
+        border-radius: 0.5rem;
+        overflow: hidden;
+    }
+
+    #tags-types-div > button {
+        border-radius: 0;
+        width: 100%;
+    }
+
+    #tags-types-div > button:first-child {
+        border-top-left-radius: 0.5rem;
+        border-bottom-left-radius: 0.5rem;
+    }
+
+    #tags-types-div > button:last-child {
+        border-top-right-radius: 0.5rem;
+        border-bottom-right-radius: 0.5rem;
+    }
+
+    #priority-div {
+        display: flex;
+        flex-direction: row;
+        gap: 1rem;
+    }
+
+    #priority-div > div > label {
+        padding-left: 0.5rem;
+    }
+
     #add-item {
         cursor: pointer;
         font-size: 2rem;
@@ -172,7 +299,7 @@
     }
 
     .order-form-category {
-        margin-bottom: 1rem;
+        margin-bottom: 2rem;
         display: flex;
     }
 

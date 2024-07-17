@@ -113,3 +113,14 @@ export const updateTypesToIcon = {
     "order-received": "check",
     "order-completed": "check"
 }
+
+export const tagsTypes = [
+    "project",
+    "stock",
+]
+
+export const priorityToColor = {
+    "low": "green",
+    "medium": "orange",
+    "high": "red",
+}

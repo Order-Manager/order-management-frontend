@@ -1,12 +1,12 @@
 <script>
 import Return from '../components/Return.vue'
-import { useDocument, useFirestore, useCurrentUser } from 'vuefire'
-import { doc, updateDoc } from "firebase/firestore";
+import { useDocument, useFirestore, useCurrentUser, useCollection } from 'vuefire'
+import { doc, updateDoc, collection } from "firebase/firestore";
 
 
 import { useRoute } from 'vue-router'
 
-import { updateTypesToMessage, statusTypesToMessage, statusTypesToColor, updateTypesToColor, updateTypesToIcon } from '../utils/definitions.js'
+import { updateTypesToMessage, statusTypesToMessage, statusTypesToColor, updateTypesToColor, updateTypesToIcon, priorityToColor } from '../utils/definitions.js'
 
 export default {
     components: {
@@ -128,8 +128,12 @@ export default {
         const order_id = route.params.id
         const order = useDocument(doc(db, 'orders', order_id))
         const userData = useDocument(doc(db, 'admins', currentUser.value.uid))
+        const tags = useCollection(collection(db, 'tags'))
+
+        console.log(tags)
+
         return {
-            order, order_id, updateTypesToMessage, statusTypesToMessage, userData, statusTypesToColor, updateTypesToColor, updateTypesToIcon
+            order, order_id, updateTypesToMessage, statusTypesToMessage, userData, statusTypesToColor, updateTypesToColor, updateTypesToIcon, priorityToColor, tags
         }
     }
 }
@@ -151,6 +155,15 @@ export default {
             </div>
             <div class="full-width center-row order-info">
                 <label for="last-update">Last update:</label><p name="last-update">{{ order.lastUpdate.toDate().toLocaleString("en-GB") }}</p>
+            </div>
+            <div class="full-width center-row order-info">
+                <label for="priority">Priority:</label><p name="priority" :class="priorityToColor[order.priority] ? priorityToColor[order.priority] : 'red'">{{ order.priority ? order.priority.charAt(0).toUpperCase()+ order.priority.slice(1) : "Medium" }}</p>
+            </div>
+            <div class="full-width center-row order-info">
+                <label for="tags">Tags:</label>
+                <div name="tags" id="tags-div" >
+                    <p v-for="(tag, index) in order.tags" :key="tag" class="tag">{{ tags.find(t => t.id === tag).name }}<span v-if="index != order.tags.length - 1">, </span></p>
+                </div>
             </div>
             <div class="full-width center-row order-info">
                 <label for="supplier">Supplier:</label> <p name="supplier">{{ order.supplier }}</p>
@@ -312,6 +325,12 @@ export default {
     display: flex;
     flex-direction: row;
     align-items: baseline;
+}
+
+#tags-div {
+    display: flex;
+    flex-direction: row;
+    gap: 0.5rem;
 }
 
 .orderview-table {

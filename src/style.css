@@ -15,8 +15,8 @@
 
   --color-text-primary: #007f7f;
   --color-text-secondary: #363858;
-  --color-primary: #dadada;
-  --color-secondary: #eaeaea;
+  --color-primary: #d0d0d0;
+  --color-secondary: #e0e0e0;
   --color-tertiary:#fafafa;
 }
 
@@ -89,6 +89,29 @@ label {
   font-size: 1.2em;
   font-weight: 500;
   color: var(--color-text-secondary);
+}
+
+input[type="radio"]::after {
+  content: "";
+  display: block;
+  width: 12px;
+  height: 12px;
+  top: 20%;
+  left: -1px;
+  position: relative;
+  border-radius: 50%;
+  background-color: var(--color-primary);
+  border: 2px solid var(--color-tertiary);
+
+  transition: background-color 0.25s;
+}
+
+input[type="radio"]::after:hover {
+  opacity: 0.5;
+}
+
+input[type="radio"]:checked::after {
+  background-color: var(--color-text-primary);
 }
 
 .full-width {
@@ -186,15 +209,13 @@ tr:hover {
 
 
 .table {
-  width: 100%;
   border-collapse: collapse;
   border-radius: 0.5rem;
-  overflow-x: scroll;
 }
 
 .table-header {
   display: grid;
-  width: max(100%, 900px);
+  width: calc(100%-6px);
 
   background-color: var(--color-primary);
   border: 3px solid transparent;
@@ -219,11 +240,25 @@ tr:hover {
 
 .table-row {
   display: grid;
-  width: max(100%, 900px);
+  width: calc(100%-6px);
 
   background-color: var(--color-tertiary);
   border: 3px solid transparent;
   padding: 0.2rem;
+}
+
+@media (max-width: 768px) {
+  .table {
+    overflow-x: scroll;
+  }
+
+  .table-header {
+    width: 768px;
+  }
+
+  .table-row {
+    width: 768px;
+  }
 }
 
 .table-row:hover, .table-row:focus, .table-row:active {
