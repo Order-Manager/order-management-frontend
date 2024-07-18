@@ -357,7 +357,7 @@ export default {
     cursor: initial !important;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 512px) {
     .orderview-table {
         width: 512px;
     }
