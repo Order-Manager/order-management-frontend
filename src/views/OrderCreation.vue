@@ -36,7 +36,7 @@
                 const priority = document.querySelector('input[name="priority"]:checked').value;
 
                 const l = Array.from(document.getElementById('items-list').children).slice(1)
-                const itemsList = l.filter(item => item.tagName === 'LI')
+                const itemsList = l.filter(item => item.classList.contains('table-row'))
 
                 for (let item of itemsList) {
                     // console.log(item);
@@ -86,7 +86,7 @@
             addItem() {
                 const itemsList = document.getElementById('items-list');
 
-                const item = document.createElement('li')
+                const item = document.createElement('div')
                 item.innerHTML = `
                     <select name="item-type">
                         <option value="item">Item</option>
@@ -97,6 +97,8 @@
                     <input type="number" name="quantity" required>
                     <input type="text" name="price" required>
                 `
+                item.classList.add('table-row')
+                item.classList.add('items-table')
                 itemsList.appendChild(item)
             },
             openTab(type) {
@@ -187,18 +189,19 @@
                     </div>
                 </div>
             </div>
-            <div class="order-form-category">
+            <div class="order-form-category full-width">
                 <label class="category-label" for="items-list">Items</label>
+
                 <div>
-                    <ul id="items-list" class="full-width">
-                        <li>
-                            <label for="item-type">Type</label>
-                            <label for="link">Link</label>
-                            <label for="name">Name</label>
-                            <label for="quantity">Quantity</label>
-                            <label for="price">Price</label>
-                        </li>
-                        <li>
+                    <div id="items-list" class="table">
+                        <div class="table-header items-table">
+                            <p>Type</p>
+                            <p>Link</p>
+                            <p>Name</p>
+                            <p>Quantity</p>
+                            <p>Price</p>
+                        </div>
+                        <div class="table-row items-table">
                             <select name="item-type">
                                 <option value="item">Item</option>
                                 <option value="cart">Cart</option>
@@ -208,8 +211,9 @@
                             <input type="text" name="name" required>
                             <input type="number" name="quantity" required>
                             <input type="text" name="price" required>
-                        </li>
-                    </ul>
+                        </div>
+                    </div>
+
                     <div class="full-width center-column">
                         <span class="material-symbols-outlined" id="add-item" v-on:click="addItem()">
                             add_circle
@@ -228,6 +232,38 @@
 
 
 <style>
+
+
+
+    .order-form-category {
+        margin-bottom: 2rem;
+        display: flex;
+    }
+
+    @media (max-width: 768px) {
+        .order-form-category {
+            flex-direction: column;
+        }
+    }
+
+    .category-label {
+        margin-right: 0.5rem;
+        min-width: 8rem;
+    }
+
+    @media (max-width: 768px) {
+        .category-label {
+            min-width: 0;
+        }
+
+        .items-table {
+            width: 768px;
+        }
+    }
+
+    #title {
+        width: calc(100% - 2rem);
+    }
 
     #selected-tags {
         display: flex;
@@ -287,52 +323,23 @@
         padding-left: 0.5rem;
     }
 
+
+    .items-table {
+        border: 3px solid transparent !important;
+        grid-template-columns: 1fr 3fr 3fr 1fr 1fr;
+        cursor: initial !important;
+    }
+
+    .table .table-row * {
+        padding: 0.5rem;
+        min-width: 0;
+        margin: 0 0.5rem;
+    }
+
     #add-item {
         cursor: pointer;
         font-size: 2rem;
         margin-top: 1rem;
-    }
-
-    .category-label {
-        margin-right: 0.5rem;
-        min-width: 8rem;
-    }
-
-    .order-form-category {
-        margin-bottom: 2rem;
-        display: flex;
-    }
-
-    #items-list {
-        margin: 0;
-        padding: 0;
-        background-color: var(--color-primary);
-        border-radius: 0.5rem;
-    }
-
-    #items-list label {
-        color: var(--color-text-primary) !important;
-    }
-
-    #items-list > li {
-        display: grid;
-        grid-template-columns: 2fr 4fr 4fr 1fr 1fr;
-        /* gap: 0.5rem; */
-    }
-
-    #items-list > li > label {
-        padding: 0.5rem;
-        text-align: center;
-    }
-
-    #items-list > li > input {
-        min-width: 2rem;
-        border-radius: 0;
-    }
-
-    #items-list > li > select {
-        min-width: 2rem;
-        border-radius: 0;
     }
 
     #add-item span {
@@ -343,4 +350,6 @@
         width: 3rem;
         height: 3rem;
     }
+
+
 </style>

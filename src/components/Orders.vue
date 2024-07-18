@@ -88,4 +88,10 @@ export default {
 
 
 <style>
+
+@media (max-width: 768px) {
+    .orderlist-table {
+        width: 768px;
+    }
+}
 </style>

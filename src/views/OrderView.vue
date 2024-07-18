@@ -157,7 +157,7 @@ export default {
                 <label for="last-update">Last update:</label><p name="last-update">{{ order.lastUpdate.toDate().toLocaleString("en-GB") }}</p>
             </div>
             <div class="full-width center-row order-info">
-                <label for="priority">Priority:</label><p name="priority" :class="priorityToColor[order.priority] ? priorityToColor[order.priority] : 'red'">{{ order.priority ? order.priority.charAt(0).toUpperCase()+ order.priority.slice(1) : "Medium" }}</p>
+                <label for="priority">Priority:</label><p name="priority" :class="priorityToColor[order.priority] ? priorityToColor[order.priority] : 'green'">{{ order.priority ? order.priority.charAt(0).toUpperCase()+ order.priority.slice(1) : "Low" }}</p>
             </div>
             <div class="full-width center-row order-info">
                 <label for="tags">Tags:</label>
@@ -315,7 +315,7 @@ export default {
 
 
 .order-info label {
-    width: 10rem;
+    min-width: 10rem;
 }
 .order-info p {
     margin: 0;
@@ -327,6 +327,24 @@ export default {
     align-items: baseline;
 }
 
+
+@media (max-width: 768px) {
+
+    #order-header {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    #order-header h2 {
+        margin: 1rem 0 0 0;
+    }
+
+    #order-header p {
+        margin: 0 0 1rem 0;
+    }
+}
+
 #tags-div {
     display: flex;
     flex-direction: row;
@@ -335,8 +353,14 @@ export default {
 
 .orderview-table {
     border: 3px solid transparent !important;
-    grid-template-columns: 3fr 8fr 1fr 1fr;
+    grid-template-columns: 3fr 3fr 1fr 1fr;
     cursor: initial !important;
+}
+
+@media (max-width: 768px) {
+    .orderview-table {
+        width: 512px;
+    }
 }
 
 #pi-review-div {
