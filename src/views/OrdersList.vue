@@ -65,7 +65,7 @@ export default {
 
 
 .orderlist-table {
-  grid-template-columns: 2fr 2fr 2fr 12rem 12rem 1fr;
+  grid-template-columns: minmax(8rem, 2fr) minmax(8rem, 2fr) minmax(8rem, 2fr) 12rem 12rem minmax(8rem, 1fr);
 }
 
 #top-controls {

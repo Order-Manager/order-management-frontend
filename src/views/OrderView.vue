@@ -190,7 +190,8 @@ export default {
                     <th>Name</th>
                     <th>Link</th>
                     <th>Quantity</th>
-                    <th>Price</th>
+                    <th>Unit Price (€)</th>
+                    <th>Total Price (€)</th>
                 </div>
                 <div
                     class="table-row orderview-table"
@@ -201,6 +202,7 @@ export default {
                     <p class="item-link"><a :href="item.link" target=”_blank” >{{ item.link }}</a></p>
                     <p>{{ item.quantity }}</p>
                     <p>{{ item.price }}</p>
+                    <p>{{ parseFloat(item.price) * parseFloat(item.quantity) }}</p>
 
                 </div>
             </div>
@@ -313,7 +315,6 @@ export default {
 
 <style>
 
-
 .order-info label {
     min-width: 10rem;
 }
@@ -357,13 +358,13 @@ export default {
 
 .orderview-table {
     border: 3px solid transparent !important;
-    grid-template-columns: 2fr 3fr 6rem 6rem;
+    grid-template-columns: 2fr 3fr 6rem 9rem 9rem;
     cursor: initial !important;
 }
 
-@media (max-width: 512px) {
+@media (max-width: 768px) {
     .orderview-table {
-        width: 512px;
+        width: 768px;
     }
 }
 

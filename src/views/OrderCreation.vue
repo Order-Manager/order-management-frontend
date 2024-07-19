@@ -98,7 +98,8 @@
                     <input type="url" name="link" required>
                     <input type="text" name="name" required>
                     <input type="number" name="quantity" required>
-                    <input type="text" name="price" required>
+                    <input type="number" name="price" min="0.00" max="10000.00" step="0.01" required/>
+
                 `
                 item.classList.add('table-row')
                 item.classList.add('items-table')
@@ -160,7 +161,7 @@
 
     <div>
         <div class="center-column">
-            <h2>Create a new order</h2>
+            <h2 class="page-title">Create a new order</h2>
         </div>
         <div id="order-creation-form" >
             <div class="order-form-category">
@@ -210,7 +211,7 @@
                             <p>Link</p>
                             <p>Name</p>
                             <p>Quantity</p>
-                            <p>Price</p>
+                            <p>Unit Price (€)</p>
                         </div>
                         <div class="table-row items-table">
                             <select name="item-type">
@@ -222,7 +223,8 @@
                             <!-- TODO: Input for name and quantity only if selected type is item -->
                             <input type="text" name="name" required>
                             <input type="number" name="quantity" required>
-                            <input type="text" name="price" required>
+                            <input type="number" name="price" min="0.00" max="10000.00" step="0.01" required/>
+
                         </div>
                     </div>
 
@@ -245,7 +247,7 @@
 
 <style>
 
-    h2 {
+    .page-title {
         margin-top: 0;
     }
 
@@ -343,7 +345,7 @@
 
     .items-table {
         border: 3px solid transparent !important;
-        grid-template-columns: 7rem 3fr 3fr 6rem 6rem;
+        grid-template-columns: 7rem 3fr 3fr 6rem 8rem;
         cursor: initial !important;
     }
 

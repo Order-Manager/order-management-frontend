@@ -32,6 +32,7 @@ export default {
 
 
 <template>
+    <div id="nav-offset-div"></div>
     <nav>
         <div id="left-nav-section">
             <span class="material-symbols-outlined" v-on:click="toggleShowTab()">menu</span>
@@ -56,20 +57,23 @@ export default {
 
 <style>
     nav {
+        position: fixed;
+        top: 0;
+        left: 0;
         max-width: 100%;
+        width: calc(100% - 2rem);
         height: 4rem;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 0 2em;
+        padding: 0 2rem;
         background-color: var(--color-primary);
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        z-index: 100;
     }
 
-    @media (max-width: 1024px) {
-        nav {
-            padding: 0 1em;
-        }
+    #nav-offset-div {
+        height: 4rem;
     }
 
 
@@ -86,10 +90,29 @@ export default {
     #right-nav-section {
         display: flex;
         align-items: center;
+        gap: 1rem;
+        margin-right: 2rem;
     }
 
     #right-nav-section p {
         color: var(--color-text-secondary);
-        margin-right: 1em;
     }
+
+
+    @media (max-width: 1024px) {
+        nav {
+            padding: 0 1rem;
+            width: calc(100% - 1rem);
+        }
+
+        #left-nav-section {
+            gap: 1rem;
+        }
+
+
+        #right-nav-section {
+            margin-right: 0.5rem;
+        }
+    }
+
 </style>
