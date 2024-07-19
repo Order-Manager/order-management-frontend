@@ -190,8 +190,8 @@ export default {
                     <th>Name</th>
                     <th>Link</th>
                     <th>Quantity</th>
-                    <th>Unit Price (€)</th>
-                    <th>Total Price (€)</th>
+                    <th>Unit Price</th>
+                    <th>Total Price</th>
                 </div>
                 <div
                     class="table-row orderview-table"
@@ -201,8 +201,8 @@ export default {
                     <p>{{ item.name }}</p>
                     <p class="item-link"><a :href="item.link" target=”_blank” >{{ item.link }}</a></p>
                     <p>{{ item.quantity }}</p>
-                    <p>{{ item.price }}</p>
-                    <p>{{ parseFloat(item.price) * parseFloat(item.quantity) }}</p>
+                    <p>{{ item.price }}€</p>
+                    <p>{{ parseFloat(item.price) * parseFloat(item.quantity) }}€</p>
 
                 </div>
             </div>
@@ -358,7 +358,7 @@ export default {
 
 .orderview-table {
     border: 3px solid transparent !important;
-    grid-template-columns: 2fr 3fr 6rem 9rem 9rem;
+    grid-template-columns: 2fr 3fr 6rem 7rem 8rem;
     cursor: initial !important;
 }
 
