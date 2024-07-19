@@ -198,7 +198,7 @@ export default {
                     :key="item.name"
                 >
                     <p>{{ item.name }}</p>
-                    <p class="link"><a :href="item.link" target=”_blank” >{{ item.link }}</a></p>
+                    <p class="item-link"><a :href="item.link" target=”_blank” >{{ item.link }}</a></p>
                     <p>{{ item.quantity }}</p>
                     <p>{{ item.price }}</p>
 
@@ -353,7 +353,7 @@ export default {
 
 .orderview-table {
     border: 3px solid transparent !important;
-    grid-template-columns: 3fr 3fr 1fr 1fr;
+    grid-template-columns: 2fr 3fr 1fr 1fr;
     cursor: initial !important;
 }
 
@@ -528,7 +528,12 @@ export default {
     cursor: pointer;
 }
 
-
+.item-link a {
+    display: block;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+}
 
 
 /* # {
