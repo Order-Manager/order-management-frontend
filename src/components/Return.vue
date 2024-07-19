@@ -10,10 +10,10 @@ export default {
 </script>
 
 <template>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-    <button style="padding: 0;"  v-on:click="moveBack()" v-on:keyup.enter="moveBack()">
+    <div></div>
+    <!-- <button style="padding: 0;"  v-on:click="moveBack()" v-on:keyup.enter="moveBack()">
         <span class="material-symbols-outlined" id="return-button">undo</span>
-    </button>
+    </button> -->
 </template>
 
 
