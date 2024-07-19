@@ -1,7 +1,7 @@
 <script>
 import Return from '../components/Return.vue'
 import { useFirestore, useCurrentUser, useCollection, useDocument } from 'vuefire'
-import { collection, addDoc, doc } from "firebase/firestore";
+import { collection, addDoc, doc, updateDoc } from "firebase/firestore";
 
 import {useRouter} from 'vue-router'
 
@@ -20,11 +20,19 @@ export default {
 
             addDoc(collection(db, 'suppliers'), {
                 name: this.newSupplierName,
-                webpage: this.newSupplierWebpage
+                webpage: this.newSupplierWebpage,
+                hidden: false
             })
 
             this.newSupplierName = ''
             this.newSupplierWebpage = ''
+        },
+        changeHidden(supplier) {
+            const db = useFirestore()
+            const supplierRef = doc(db, 'suppliers', supplier.id)
+            updateDoc(supplierRef, {
+                hidden: supplier.hidden
+            })
         }
     },
     props: {
@@ -69,6 +77,7 @@ export default {
         <div class="table-header suppliers-table">
             <p>Name</p>
             <p>Link</p>
+            <p>Hidden</p>
         </div>
         <div class="table-row suppliers-table"
             v-for="supplier in suppliers"
@@ -76,6 +85,9 @@ export default {
         >
             <p>{{ supplier.name }}</p>
             <a :href="supplier.webpage">{{ supplier.webpage }}</a>
+            <div class="center-column" >
+                <input type="checkbox" v-model="supplier.hidden" v-on:change="changeHidden(supplier)"/>
+            </div>
         </div>
     </div>
 
@@ -96,7 +108,7 @@ export default {
 
 .suppliers-table {
     border: 3px solid transparent !important;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 5rem;
     cursor: initial !important;
 }
 
@@ -104,6 +116,10 @@ export default {
     padding: 0.5rem;
     min-width: 0;
     margin: 0 0.5rem;
+}
+
+.table .table-row input[type="checkbox"] {
+    width: 1rem;
 }
 
 </style>
