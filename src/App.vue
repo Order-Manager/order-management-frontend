@@ -35,7 +35,7 @@ div.active {
 
 @media (max-width: 1024px) {
   #main-view {
-    padding: 2rem 0.5rem 6rem 0.5rem;
+    padding: 1rem 0.5rem 6rem 0.5rem;
   }
 }
 

@@ -91,6 +91,7 @@
                     <select name="item-type">
                         <option value="item">Item</option>
                         <option value="cart">Cart</option>
+                        <option value="stock">Stock</option>
                     </select>
                     <input type="url" name="link" required>
                     <input type="text" name="name" required>
@@ -124,7 +125,9 @@
                     this.selectedTags.splice(index, 1)
                     button.classList.remove('alt-button')
                 }
-
+            },
+            isStock(idx) {
+                console.log(idx)
             }
         },
         setup() {
@@ -141,7 +144,7 @@
         },
         mounted() {
             this.openTab('project');
-            console.log(this.tagsTypes)
+            // console.log(this.tagsTypes)
         }
     }
 </script>
@@ -150,7 +153,9 @@
     <Return />
 
     <div>
-        <h2>Create a new order</h2>
+        <div class="center-column">
+            <h2>Create a new order</h2>
+        </div>
         <div id="order-creation-form" >
             <div class="order-form-category">
                 <label class="category-label" for="title">Title</label>
@@ -205,6 +210,7 @@
                             <select name="item-type">
                                 <option value="item">Item</option>
                                 <option value="cart">Cart</option>
+                                <option value="stock">Stock</option>
                             </select>
                             <input type="url" name="link" required>
                             <!-- TODO: Input for name and quantity only if selected type is item -->
@@ -233,7 +239,9 @@
 
 <style>
 
-
+    h2 {
+        margin-top: 0;
+    }
 
     .order-form-category {
         margin-bottom: 2rem;

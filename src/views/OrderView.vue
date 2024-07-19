@@ -327,6 +327,10 @@ export default {
     align-items: baseline;
 }
 
+#order-header * {
+    margin-top: 0;
+}
+
 
 @media (max-width: 768px) {
 
