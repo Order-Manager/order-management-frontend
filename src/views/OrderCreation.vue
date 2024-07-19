@@ -10,7 +10,9 @@
     } from 'vuefire'
     import {
         collection,
-        addDoc
+        addDoc,
+        query,
+        where
     } from 'firebase/firestore'
 
     import {
@@ -132,7 +134,11 @@
         },
         setup() {
             const db = useFirestore()
-            const suppliers = useCollection(collection(db, 'suppliers'))
+            const suppliers = useCollection(
+                query(
+                    collection(db, 'suppliers'),
+                    where('hidden', '!=', true)
+                ))
             const user = useCurrentUser()
 
             const tags = useCollection(collection(db, 'tags'));
@@ -197,8 +203,8 @@
             <div class="order-form-category full-width">
                 <label class="category-label" for="items-list">Items</label>
 
-                <div>
-                    <div id="items-list" class="table">
+                <div class="full-width">
+                    <div id="items-list" class="table full-width">
                         <div class="table-header items-table">
                             <p>Type</p>
                             <p>Link</p>
@@ -331,17 +337,14 @@
         padding-left: 0.5rem;
     }
 
+    .table {
+        width: 100%;
+    }
 
     .items-table {
         border: 3px solid transparent !important;
-        grid-template-columns: 1fr 3fr 3fr 1fr 1fr;
+        grid-template-columns: 7rem 3fr 3fr 6rem 6rem;
         cursor: initial !important;
-    }
-
-    .table .table-row * {
-        padding: 0.5rem;
-        min-width: 0;
-        margin: 0 0.5rem;
     }
 
     #add-item {

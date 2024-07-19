@@ -357,7 +357,7 @@ export default {
 
 .orderview-table {
     border: 3px solid transparent !important;
-    grid-template-columns: 2fr 3fr 1fr 1fr;
+    grid-template-columns: 2fr 3fr 6rem 6rem;
     cursor: initial !important;
 }
 

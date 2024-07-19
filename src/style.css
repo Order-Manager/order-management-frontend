@@ -242,6 +242,9 @@ tr:hover {
   align-items: center;
   text-align: center;
   margin: 0;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  word-break: break-word;
 }
 
 

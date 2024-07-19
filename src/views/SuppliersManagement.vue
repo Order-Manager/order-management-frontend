@@ -77,7 +77,7 @@ export default {
         <div class="table-header suppliers-table">
             <p>Name</p>
             <p>Link</p>
-            <p>Hidden</p>
+            <p>Hide</p>
         </div>
         <div class="table-row suppliers-table"
             v-for="supplier in suppliers"
@@ -93,7 +93,7 @@ export default {
 
     <div class="full-width center-column">
         <div class="full-width center-row single-row" style="width: fit-content;">
-            <h3>Add Supplier:</h3>
+            <h3>Add a Supplier:</h3>
             <input type="text" v-model="newSupplierName" placeholder="Supplier Name" required/>
             <input type="url" v-model="newSupplierWebpage" placeholder="Supplier Webpage" required/>
             <span class="material-symbols-outlined" id="add-item" v-on:click="addSupplier()">
