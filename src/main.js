@@ -14,6 +14,7 @@ import OrderCreation from "./views/OrderCreation.vue";
 import OrderView from "./views/OrderView.vue";
 import Login from "./views/Login.vue";
 import SignOut from "./views/SignOut.vue";
+import SuppliersManagement from "./views/SuppliersManagement.vue";
 
 import {
     firebaseApp
@@ -52,6 +53,10 @@ const routes = [{
     {
         path: "/signout",
         component: SignOut
+    },
+    {
+        path: "/suppliers",
+        component: SuppliersManagement
     },
 ];
 

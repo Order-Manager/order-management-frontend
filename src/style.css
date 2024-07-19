@@ -235,7 +235,7 @@ tr:hover {
   white-space: nowrap;
 }
 
-.table p {
+.table p, .table a {
   padding: 0.5rem;
   display: flex;
   justify-content: center;
@@ -329,4 +329,10 @@ input:checked+.slider:before {
 
 .slider.round:before {
   border-radius: 50%;
+}
+
+.single-row {
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
 }
