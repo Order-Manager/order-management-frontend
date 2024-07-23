@@ -126,11 +126,9 @@ export default {
         const currentUser = useCurrentUser()
         const route = useRoute()
         const order_id = route.params.id
+        const tags = useCollection(collection(db, 'tags'))
         const order = useDocument(doc(db, 'orders', order_id))
         const userData = useDocument(doc(db, 'admins', currentUser.value.uid))
-        const tags = useCollection(collection(db, 'tags'))
-
-        console.log(tags)
 
         return {
             order, order_id, updateTypesToMessage, statusTypesToMessage, userData, statusTypesToColor, updateTypesToColor, updateTypesToIcon, priorityToColor, tags
