@@ -50,7 +50,7 @@ export default {
     >
       {{ showCompleted ? "Hide" : "Show" }} completed
     </button>
-    <button v-if="userData && (userData.isPI || userData.isRE)" v-on:click="viewAll()">View all orders</button>
+    <button v-if="userData && (userData.isPI || userData.isIR)" v-on:click="viewAll()">View all orders</button>
     <button class="alt-button" id="new-order" v-on:click="createNewOrder()">
       New order
     </button>

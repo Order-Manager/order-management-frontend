@@ -51,7 +51,7 @@ export default {
         }
 
         const userData = useDocument(doc(db, 'admins', currentUser.value.uid));
-        const isAdmin = userData.value != null && (userData.value.isPI || userData.value.isRE);
+        const isAdmin = userData.value != null && (userData.value.isPI || userData.value.isIR);
 
         if(!isAdmin) {
             const router = useRouter()

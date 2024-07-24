@@ -17,7 +17,7 @@
             signIn() {
                 const auth = getAuth();
                 const actionCodeSettings = {
-                    url: 'https://orders.thomasjuldo.com/orders/#/login?cartId=1234',
+                    url: 'https://ift.devinci.fr/orders/#/login?cartId=1234',
                     handleCodeInApp: true,
                 };
                 const email = document.getElementById('email').value;

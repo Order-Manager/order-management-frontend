@@ -65,7 +65,7 @@
         <button v-for="type in tagsTypes" :key="type" v-on:click="openTab(type)" class="tag-type-button" :id="type + '-type-button'">{{ type }}</button>
     </div>
     <div v-for="type in tagsTypes" :key="type" :id="type" class="tag-tab">
-        <button v-for="tag in tags.filter(tag => tag.type === type)" :key="tag.id" class="tag-button" v-on:click="toggleTag(tag, type)" :id="type + '-' + tag.id + '-name-button'">{{ tag.name }}</button>
+        <button v-for="tag in tags.filter(tag => (tag.type === type) && (!tag.hidden))" :key="tag.id" class="tag-button" v-on:click="toggleTag(tag, type)" :id="type + '-' + tag.id + '-name-button'">{{ tag.name }}</button>
     </div>
 </template>
 

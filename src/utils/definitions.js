@@ -117,6 +117,7 @@ export const updateTypesToIcon = {
 export const tagsTypes = [
     "project",
     "stock",
+    "asso"
 ]
 
 export const priorityToColor = {

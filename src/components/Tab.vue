@@ -18,7 +18,7 @@ export default {
         const db = useFirestore();
 
         const userData = useDocument(doc(db, 'admins', currentUser.value.uid));
-        const isAdmin = userData.value != undefined && (userData.value.isPI || userData.value.isRE);
+        const isAdmin = userData.value != undefined && (userData.value.isPI || userData.value.isIR);
         const showTab = ref(true);
 
         return {
@@ -46,6 +46,7 @@ export default {
         <div id="side-tab">
             <a v-on:click="goToPage('/')">Orders</a>
             <a v-on:click="goToPage('/suppliers')" v-if="isAdmin">Suppliers</a>
+            <a v-on:click="goToPage('/tags')" v-if="isAdmin">Tags</a>
         </div>
     </div>
 </template>
