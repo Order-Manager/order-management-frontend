@@ -1,5 +1,5 @@
 <script>
-import { useCurrentUser } from 'vuefire'
+import { useCurrentUser } from '../lib/utils'
 import { ref } from 'vue'
 
 import Tab from './Tab.vue'
@@ -22,8 +22,9 @@ export default {
             this.$router.push('/')
         }
     },
-    setup() {
-        const user = useCurrentUser();
+    async setup() {
+        const user = await useCurrentUser();
+        console.log(user.value.session)
         const showTab = ref(false);
         return {
             user, showTab
@@ -49,8 +50,8 @@ export default {
                 <span class="slider round"></span>
             </label> -->
             <p v-if="user">{{ user.email }}</p>
-            <button id="login-button" class="alt-button" v-on:click="login()" v-if="user == undefined">Login</button>
-            <button id="login-button" class="alt-button" v-on:click="signOut()" v-if="user">Sign Out</button>
+            <button id="login-button" class="alt-button" v-on:click="login()" v-if="user.session == null">Login</button>
+            <button id="login-button" class="alt-button" v-on:click="signOut()" v-if="user.session != null">Sign Out</button>
         </div>
     </nav>
 

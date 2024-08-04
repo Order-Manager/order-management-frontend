@@ -5,6 +5,8 @@ import {
     createRouter,
     createWebHashHistory
 } from "vue-router";
+
+import { getCurrentUser } from "./lib/utils";
 import "./style.css";
 import App from "./App.vue";
 
@@ -17,52 +19,43 @@ import SignOut from "./views/SignOut.vue";
 import SuppliersManagement from "./views/SuppliersManagement.vue";
 import TagsManagement from "./views/TagsManagement.vue";
 
-import {
-    firebaseApp
-} from './firebaseInit'
-import {
-    VueFire,
-    VueFireAuth,
-    getCurrentUser
-} from 'vuefire'
-
 
 const routes = [{
-        path: "/",
-        component: OrdersList,
-        meta: { requiresAuth: true }
-    },
-    {
-        path: "/all",
-        component: OrdersListAdmin,
-        meta: { requiresAuth: true }
-    },
-    {
-        path: "/create",
-        component: OrderCreation,
-        meta: { requiresAuth: true }
-    },
-    {
-        path: "/view/:id",
-        component: OrderView,
-        meta: { requiresAuth: true }
-    },
-    {
-        path: "/login",
-        component: Login
-    },
-    {
-        path: "/signout",
-        component: SignOut
-    },
-    {
-        path: "/suppliers",
-        component: SuppliersManagement
-    },
-    {
-        path: "/tags",
-        component: TagsManagement
-    },
+    path: "/",
+    component: OrdersList,
+    meta: { requiresAuth: true }
+},
+{
+    path: "/all",
+    component: OrdersListAdmin,
+    meta: { requiresAuth: true }
+},
+{
+    path: "/create",
+    component: OrderCreation,
+    meta: { requiresAuth: true }
+},
+{
+    path: "/view/:id",
+    component: OrderView,
+    meta: { requiresAuth: true }
+},
+{
+    path: "/login",
+    component: Login
+},
+{
+    path: "/signout",
+    component: SignOut
+},
+{
+    path: "/suppliers",
+    component: SuppliersManagement
+},
+{
+    path: "/tags",
+    component: TagsManagement
+},
 ];
 
 const router = createRouter({
@@ -74,9 +67,11 @@ router.beforeEach(async (to) => {
     // routes with `meta: { requiresAuth: true }` will check for
     // the users, others won't
     if (to.meta.requiresAuth) {
-        const currentUser = await getCurrentUser()
+        const {currentUser, error} = await getCurrentUser()
+        console.log(currentUser)
+        
         // if the user is not logged in, redirect to the login page
-        if (!currentUser) {
+        if (error) {
             return {
                 path: '/login',
                 query: {
@@ -92,13 +87,5 @@ router.beforeEach(async (to) => {
 
 const app = createApp(App);
 app.use(router);
-app.use(VueFire, {
-    // imported above but could also just be created here
-    firebaseApp,
-    modules: [
-        // we will see other modules later on
-        VueFireAuth(),
-    ],
-})
 
 app.mount("#app");
