@@ -21,89 +21,122 @@
 
     import { tagsTypes } from '../utils/definitions'
 
+    import { useToast } from "vue-toastification";
+
+
 
     export default {
         components: {
             Return, TagComponent
         },
         methods: {
-            createOrder(email, uid) {
-                const title = document.getElementById('title').value
-                const supplierName = document.getElementById('supplier').value
-                const comment = document.getElementById('comment').value
-                const db = useFirestore()
-                const items = []
-
-                const tags = this.selectedTags.map(tag => tag.id);
+            async createOrder(email, uid) {
+                try {
+                // 1. Form Data & Validation
+                const title = document.getElementById('title').value;
+                const supplierName = document.getElementById('supplier').value;
+                const comment = document.getElementById('comment').value;
                 const priority = document.querySelector('input[name="priority"]:checked').value;
 
-                const l = Array.from(document.getElementById('items-list').children).slice(1)
-                const itemsList = l.filter(item => item.classList.contains('table-row'))
+                const items = [];
+                const itemsList = Array.from(document.getElementById('items-list').children)
+                                        .slice(1)
+                                        .filter(item => item.classList.contains('table-row'));
 
-                for (let item of itemsList) {
-                    // console.log(item);
-                    const link = item.querySelector('input[name="link"]').value
-                    if (link.length == 0) {
-                        // TODO: Show error message
-                        return
-                    }
-                    const type = item.querySelector('select[name="item-type"]').value
-                    // .value
-                    const name = item.querySelector('input[name="name"]').value
-                    const quantity = item.querySelector('input[name="quantity"]').value
-                    const price = item.querySelector('input[name="price"]').value
-
-                    if (type === 'item' && (name.length == 0 || quantity.length == 0)) {
-                        // TODO: Show error message
-                        return
-                    }
-
-                    items.push({
-                        type: type,
-                        link: link,
-                        name: name,
-                        quantity: quantity,
-                        price: price
-                    })
+                if (title.length === 0) {
+                    this.showError("Please provide a title for the order.");
+                    return;
                 }
 
+                if (this.selectedTags.length === 0) {
+                    this.showError("Please select at least one tag.");
+                    return;
+                }
 
-                addDoc(collection(db, 'orders'), {
+                for (const item of itemsList) {
+                    const link = item.querySelector('input[name="link"]').value;
+                    const type = item.querySelector('select[name="item-type"]').value;
+                    const name = item.querySelector('input[name="name"]').value;
+                    const quantity = item.querySelector('input[name="quantity"]').value;
+                    const price = item.querySelector('input[name="price"]').value;
+
+                    if ((type === 'item' || type === 'cart') && link.length === 0) {
+                        this.showError("Please provide a link for all items and carts.");
+                        return;
+                    }
+
+                    if (name.length === 0) {
+                        this.showError("Please provide a name for all items.");
+                        return;
+                    }
+
+                    if (quantity <= 0) {
+                        this.showError("Quantity must be greater than 0.");
+                        return;
+                    }
+
+                    items.push({ type, link, name, quantity, price });
+                }
+
+                // 2. Firestore Interaction
+                const db = useFirestore();
+                await addDoc(collection(db, 'orders'), {
                     creationDate: new Date(),
                     lastUpdate: new Date(),
                     requestedBy: email,
                     requestedById: uid,
                     status: 'pendingIR',
-                    title: title,
+                    title,
                     supplier: supplierName,
-                    items: items,
-                    comment: comment,
+                    items,
+                    comment,
                     updates: [],
-                    tags: tags,
-                    priority: priority
-                })
+                    tags: this.selectedTags.map(tag => tag.id),
+                    priority
+                });
 
-                this.$router.push('/')
+                // 3. Success Handling and Redirect
+                // Optionally show a success message
+                this.showSuccess("Order created successfully!");
+
+                // Clear the form (consider using a form reset if available)
+                document.getElementById('title').value = '';
+                document.getElementById('supplier').value = '';
+                document.getElementById('comment').value = '';
+
+                this.$router.push('/');
+
+                } catch (error) {
+                // 4. Error Handling
+                console.error("Error creating order:", error);
+                // Show an error message to the user
+                this.showError("An error occurred while creating the order.");
+                }
+            },
+            showError(message) {
+                this.toast.error(message);
+            },
+            showSuccess(message) {
+                this.toast.success(message);
+            },
+            showWarning(message) {
+                this.toast.warning(message);
+            },
+            showInfo(message) {
+                this.toast.info(message);
             },
             addItem() {
-                const itemsList = document.getElementById('items-list');
-
-                const item = document.createElement('div')
-                item.innerHTML = `
-                    <select name="item-type">
-                        <option value="item">Item</option>
-                        <option value="cart">Cart</option>
-                        <option value="stock">Stock</option>
-                    </select>
-                    <input type="url" name="link" required>
-                    <input type="text" name="name" required>
-                    <input type="number" name="quantity" required>
-                    <input type="number" name="price" min="0.00" max="10000.00" step="0.01" required/>
-
-                `
-                item.classList.add('table-row')
-                item.classList.add('items-table')
-                itemsList.appendChild(item)
+                this.items.push({
+                type: 'item', // Default type
+                link: '',
+                name: '',
+                quantity: 1,
+                price: 0.00
+                });
+            },
+            removeItem(index) {
+                this.items.splice(index, 1);
+                this.showInfo("Item removed.");
             },
             openTab(type) {
                 const tabs = document.getElementsByClassName('tag-tab')
@@ -133,6 +166,15 @@
                 console.log(idx)
             }
         },
+        data() {
+            return { items: [{
+                type: 'item',
+                link: '',
+                name: '',
+                quantity: 1,
+                price: 0.00
+            }] }
+        },
         setup() {
             const db = useFirestore()
             const suppliers = useCollection(
@@ -145,8 +187,10 @@
             const tags = useCollection(collection(db, 'tags'));
             const selectedTags = ref([]);
 
+            const toast = useToast();
+
             return {
-                suppliers, user, tags, tagsTypes, selectedTags
+                suppliers, user, tags, tagsTypes, selectedTags, toast
             }
         },
         mounted() {
@@ -213,18 +257,20 @@
                             <p>Quantity</p>
                             <p>Unit Price (€)</p>
                         </div>
-                        <div class="table-row items-table">
-                            <select name="item-type">
-                                <option value="item">Item</option>
-                                <option value="cart">Cart</option>
-                                <option value="stock">Stock</option>
-                            </select>
-                            <input type="url" name="link" required>
-                            <!-- TODO: Input for name and quantity only if selected type is item -->
-                            <input type="text" name="name" required>
-                            <input type="number" name="quantity" required>
-                            <input type="number" name="price" min="0.00" max="10000.00" step="0.01" required/>
 
+                        <div v-for="(item, index) in items" :key="index" class="table-row items-table">
+                            <select name="item-type" v-model="item.type">
+                            <option value="item">Item</option>
+                            <option value="cart">Cart</option>
+                            <option value="stock">Stock</option>
+                            </select>
+                            <input type="url" name="link" v-model="item.link" required>
+                            <input type="text" name="name" v-model="item.name" required>
+                            <input type="number" name="quantity" v-model="item.quantity" required>
+                            <input type="number" name="price" min="0.00" max="10000.00" step="0.01" v-model="item.price" required/>
+                            <span class="material-symbols-outlined red remove-item" @click="removeItem(index)">
+                            cancel
+                            </span>
                         </div>
                     </div>
 
@@ -345,8 +391,13 @@
 
     .items-table {
         border: 3px solid transparent !important;
-        grid-template-columns: 7rem 3fr 3fr 6rem 8rem;
+        grid-template-columns: 7rem 3fr 3fr 6rem 8rem 4rem;
         cursor: initial !important;
+    }
+
+
+    .remove-item {
+        cursor: pointer;
     }
 
     #add-item {

@@ -178,7 +178,7 @@ export default {
                 <span class="material-symbols-outlined">
                     shopping_cart
                 </span>
-                <h2>&nbsp;Items: {{ 0.01*Math.floor(100 * order.items.reduce((acc, item) => acc + parseFloat(item.price) * parseFloat(item.quantity), 0)) }}€</h2>
+                <h2>&nbsp;Items: {{ Math.floor(100 * order.items.reduce((acc, item) => acc + parseFloat(item.price) * parseFloat(item.quantity), 0)) / 100 }}€</h2>
             </div>
         </div>
 
@@ -200,7 +200,7 @@ export default {
                     <p class="item-link"><a :href="item.link" target=”_blank” >{{ item.link }}</a></p>
                     <p>{{ item.quantity }}</p>
                     <p>{{ item.price }}€</p>
-                    <p>{{ 0.01*Math.floor(100 * parseFloat(item.price) * parseFloat(item.quantity)) }}€</p>
+                    <p>{{  Math.floor(100 * parseFloat(item.price) * parseFloat(item.quantity)) / 100 }}€</p>
 
                 </div>
             </div>

@@ -29,7 +29,7 @@ export default {
           // you can pass a query into useCollection
           collection(db, "orders"), // go to the sessions collection
           where("requestedBy", "==", currentUser.value.email), // only get the ones that belong to the user.
-          orderBy("lastUpdate", "desc") // order by creation date descending
+          orderBy("creationDate", "desc") // order by creation date descending
         )
       );
     const sortedByCreationDate = ref(false);

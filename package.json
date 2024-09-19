@@ -12,6 +12,7 @@
     "firebase": "^10.8.0",
     "vue": "^3.4.15",
     "vue-router": "^4.2.5",
+    "vue-toastification": "^2.0.0-rc.5",
     "vuefire": "^3.1.22"
   },
   "devDependencies": {

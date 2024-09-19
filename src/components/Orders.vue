@@ -11,34 +11,34 @@ export default {
             this.$router.push(`/view/${id}`);
         },
         sortByCreationDate() {
-        const db = useFirestore();
-        const currentUser = useCurrentUser();
+            const db = useFirestore();
+            const currentUser = useCurrentUser();
 
-        if (this.sortedByCreationDate) return;
-        this.orders = useCollection(
-            query(
-            // you can pass a query into useCollection
-            collection(db, "orders"), // go to the sessions collection
-            where("requestedBy", "==", currentUser.value.email), // only get the ones that belong to the user.
-            orderBy("creationDate", "desc") // order by creation date descending
-            )
-        );
-        this.sortedByCreationDate = true;
+            if (this.sortedByCreationDate) return;
+            this.orders = useCollection(
+                query(
+                // you can pass a query into useCollection
+                collection(db, "orders"), // go to the sessions collection
+                where("requestedBy", "==", currentUser.value.email), // only get the ones that belong to the user.
+                orderBy("creationDate", "desc") // order by creation date descending
+                )
+            );
+            this.sortedByCreationDate = true;
         },
         sortByLastUpdate() {
-        const db = useFirestore();
-        const currentUser = useCurrentUser();
+            const db = useFirestore();
+            const currentUser = useCurrentUser();
 
-        if (!this.sortedByCreationDate) return;
-        this.orders = useCollection(
-            query(
-            // you can pass a query into useCollection
-            collection(db, "orders"), // go to the sessions collection
-            where("requestedBy", "==", currentUser.value.email), // only get the ones that belong to the user.
-            orderBy("lastUpdate", "desc") // order by creation date descending
-            )
-        );
-        this.sortedByCreationDate = false;
+            if (!this.sortedByCreationDate) return;
+            this.orders = useCollection(
+                query(
+                // you can pass a query into useCollection
+                collection(db, "orders"), // go to the sessions collection
+                where("requestedBy", "==", currentUser.value.email), // only get the ones that belong to the user.
+                orderBy("lastUpdate", "desc") // order by creation date descending
+                )
+            );
+            this.sortedByCreationDate = false;
         },
     },
     setup() {

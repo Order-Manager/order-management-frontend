@@ -25,7 +25,8 @@ import {
     VueFireAuth,
     getCurrentUser
 } from 'vuefire'
-
+import Toast from "vue-toastification";
+import "vue-toastification/dist/index.css";
 
 const routes = [{
         path: "/",
@@ -101,4 +102,9 @@ app.use(VueFire, {
     ],
 })
 
+const toastOptions = {
+    position: "top-center",
+    timeout: 2000
+};
+app.use(Toast, toastOptions);
 app.mount("#app");

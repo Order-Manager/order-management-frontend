@@ -10,14 +10,15 @@
 
     import { useRouter } from 'vue-router'
 
-
+    import { useToast } from "vue-toastification";
 
     export default {
         methods: {
             signIn() {
                 const auth = getAuth();
                 const actionCodeSettings = {
-                    url: 'https://ift.devinci.fr/orders/#/login?cartId=1234',
+                    // url: 'https://ift.devinci.fr/orders/#/login?cartId=1234',
+                    url: window.location.href,
                     handleCodeInApp: true,
                 };
                 const email = document.getElementById('email').value;
@@ -30,16 +31,18 @@
                 successMessage.style.display = 'none';
 
                 if(!email.match(/.+devinci\.fr/)) {
-                    errorMessage.textContent = 'Please enter a valid email address';
-                    errorMessage.style.display = 'block';
+                    // errorMessage.textContent = 'Please enter a valid email address';
+                    // errorMessage.style.display = 'block';
+                    this.toast.error('Please enter a valid email address');
                     return;
                 }
 
                 sendSignInLinkToEmail(auth, email, actionCodeSettings)
                     .then(() => {
                         window.localStorage.setItem('emailForSignIn', email);
-                        successMessage.textContent = 'A login link has been sent to your email address. Please check your inbox.';
-                        successMessage.style.display = 'block';
+                        this.toast.success('A login link has been sent to your email address. Please check your inbox.');
+                        // successMessage.textContent = 'A login link has been sent to your email address. Please check your inbox.';
+                        // successMessage.style.display = 'block';
                     })
                     .catch((error) => {
                         const errorCode = error.code;
@@ -51,6 +54,8 @@
         setup() {
             const auth = getAuth();
             const router = useRouter();
+            const toast = useToast();
+
 
             if (isSignInWithEmailLink(auth, window.location.href)) {
                 let email = window.localStorage.getItem('emailForSignIn');
@@ -60,20 +65,21 @@
                 signInWithEmailLink(auth, email, window.location.href)
                     .then((result) => {
                         window.localStorage.removeItem('emailForSignIn');
+                        toast.success('You have been signed in successfully');
                         router.push('/');
                     })
                     .catch((error) => {
-                        console.log('Error', error);
-                        const errorMessage = document.getElementById('error');
-                        errorMessage.textContent = 'Error signing in: ' + error.message;
-                        errorMessage.style.display = 'block';
-
+                        toast.error('An error occurred while signing inError signing in: ' + error.message);
 
                     });
             } else if (getCurrentUser(auth)) {
                 const router = useRouter();
                 router.push('/');
             }
+
+
+            return { toast };
+
         }
     }
 </script>

@@ -28,7 +28,7 @@ export default {
         query(
           // you can pass a query into useCollection
           collection(db, "orders"), // go to the sessions collection
-          orderBy("lastUpdate", "desc") // order by creation date descending
+          orderBy("creationDate", "desc") // order by creation date descending
         )
       );
     const sortedByCreationDate = ref(false);
