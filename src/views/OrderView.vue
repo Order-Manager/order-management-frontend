@@ -8,6 +8,9 @@ import { useRoute } from 'vue-router'
 
 import { updateTypesToMessage, statusTypesToMessage, statusTypesToColor, updateTypesToColor, updateTypesToIcon, priorityToColor } from '../utils/definitions.js'
 
+import { useToast } from "vue-toastification";
+
+
 export default {
     components: {
         Return
@@ -15,6 +18,14 @@ export default {
     methods: {
         goToOrder(date) {
             this.$router.push(`/view/${date}`)
+        },
+        cancelOrder() {
+            const db = useFirestore()
+            const orderRef = doc(db, 'orders', this.order_id)
+            updateDoc(orderRef, {
+                "status": "cancelled",
+                "cancelledBy": this.currentUser.email
+            })
         },
         approvedByIR(requiresPI) {
             const db = useFirestore()
@@ -83,7 +94,6 @@ export default {
             })
             // console.log(orderRef)
         },
-
         setAsCompleted() {
             const db = useFirestore()
             const orderRef = doc(db, 'orders', this.order_id)
@@ -116,10 +126,129 @@ export default {
                 ]
             })
             area.value = ""
+        },
+        showError(message) {
+            this.toast.error(message);
+        },
+        showSuccess(message) {
+            this.toast.success(message);
+        },
+        showWarning(message) {
+            this.toast.warning(message);
+        },
+        showInfo(message) {
+            this.toast.info(message);
+        },
+        isPI() {
+            return this.userData && this.userData.isPI;
+        },
+        isIR() {
+            return this.userData && this.userData.isIR;
+        },
+        isReviewer() {
+            return this.isPI() || this.isIR();
+        },
+        isAuthor() {
+            return this.order.requestedById === this.currentUser.uid;
+        },
+        canEdit() {
+            return (
+                this.isAuthor()
+                && this.order.status === "pendingIR");
+        },
+        getTableClass() {
+            return {
+                'orderview-table': !this.canEdit(),
+                'orderview-table-edit': this.canEdit()
+            }
+        },
+        editItem(item, index) {
+            this.editingItemIndex = index;
+            // Create a copy of the item to avoid directly modifying the original
+            this.editedItem = { ...item };
+        },
+        saveItem() {
+            try {
+                // Check if the item has changed
+                if (this.editedItem.name === this.order.items[this.editingItemIndex].name
+                    && this.editedItem.link === this.order.items[this.editingItemIndex].link
+                    && this.editedItem.quantity === this.order.items[this.editingItemIndex].quantity
+                    && this.editedItem.price === this.order.items[this.editingItemIndex].price) {
+                    this.showWarning("No changes detected.");
+                    // Reset editing state
+                    this.editingItemIndex = null;
+                    this.editedItem = {};
+                    return;
+                }
+
+                // Check if the item is valid
+                if (!this.editedItem.name) {
+                    this.showError("Item name is required.");
+                    return;
+                }
+
+                if (!this.editedItem.link) {
+                    this.showError("Item link is required.");
+                    return;
+                }
+
+                if (this.editedItem.quantity <= 0) {
+                    this.showError("Quantity must be greater than 0.");
+                    return;
+                }
+
+                // Update the item in the order.items array
+                this.order.items.splice(this.editingItemIndex, 1, this.editedItem);
+
+                // Update Firestore
+                const db = useFirestore();
+                const orderRef = doc(db, 'orders', this.order_id);
+
+                updateDoc(orderRef, {
+                    items: this.order.items,
+                });
+
+                // Reset editing state
+                this.editingItemIndex = null;
+                this.editedItem = {};
+
+                this.showSuccess("Item updated!");
+            } catch (error) {
+                console.error("Error updating item:", error);
+                this.showError("Failed to update item.");
+            }
+        },
+        cancelEdit() {
+            this.editingItemIndex = null;
+            this.editedItem = {};
+        },
+        deleteItem(index) {
+            try {
+            // Update the items array
+            this.order.items.splice(index, 1);
+
+            // Update Firestore
+            const db = useFirestore();
+            const orderRef = doc(db, 'orders', this.order_id);
+            // updateDoc(orderRef, {
+            //     items: this.order.items,
+            // });
+
+            this.showSuccess("Item deleted!");
+            } catch (error) {
+            console.error("Error deleting item:", error);
+            this.showError("Failed to delete item.");
+            }
         }
     },
     props: {
         order_id: String,
+    },
+    data() {
+        return {
+            editingItemIndex: null, // Index of the item being edited
+            editedItem: {}  // Temporary object to hold changes
+        };
     },
     setup() {
         const db = useFirestore()
@@ -129,9 +258,10 @@ export default {
         const tags = useCollection(collection(db, 'tags'))
         const order = useDocument(doc(db, 'orders', order_id))
         const userData = useDocument(doc(db, 'admins', currentUser.value.uid))
+        const toast = useToast()
 
         return {
-            order, order_id, updateTypesToMessage, statusTypesToMessage, userData, statusTypesToColor, updateTypesToColor, updateTypesToIcon, priorityToColor, tags
+            order, order_id, updateTypesToMessage, statusTypesToMessage, userData, statusTypesToColor, updateTypesToColor, updateTypesToIcon, priorityToColor, tags, currentUser, toast
         }
     }
 }
@@ -184,75 +314,104 @@ export default {
 
         <div id="items-list" class="full-width">
             <div class="table">
-                <div class="table-header orderview-table">
+                <div class="table-header" v-bind:class="getTableClass()">
                     <th>Name</th>
                     <th>Link</th>
                     <th>Quantity</th>
                     <th>Unit Price</th>
-                    <th>Total Price</th>
+                    <th>Total</th>
+                    <th v-if="canEdit()">Edit</th>
+                    <th v-if="canEdit()">Delete</th>
                 </div>
                 <div
-                    class="table-row orderview-table"
-                    v-for="item in order.items"
-                    :key="item.name"
+                    class="table-row"
+                    v-bind:class="getTableClass()"
+                    v-for="(item, index) in order.items"
+                    :key="index"
                 >
-                    <p>{{ item.name }}</p>
-                    <p class="item-link"><a :href="item.link" target=”_blank” >{{ item.link }}</a></p>
-                    <p>{{ item.quantity }}</p>
-                    <p>{{ item.price }}€</p>
-                    <p>{{  Math.floor(100 * parseFloat(item.price) * parseFloat(item.quantity)) / 100 }}€</p>
+                    <p v-if="editingItemIndex != index">{{ item.name }}</p>
+                    <input v-if="editingItemIndex == index" type="text" v-model="editedItem.name" required>
 
+                    <p v-if="editingItemIndex != index" class="item-link"><a :href="item.link" target=”_blank” >{{ item.link }}</a></p>
+                    <input v-if="editingItemIndex == index" type="url" name="link" v-model="editedItem.link" required>
+
+                    <p v-if="editingItemIndex != index">{{ item.quantity }}</p>
+                    <input v-if="editingItemIndex == index" type="number" name="quantity" v-model="editedItem.quantity" required>
+
+                    <p v-if="editingItemIndex != index">{{ item.price }}€</p>
+                    <input v-if="editingItemIndex == index" type="number" name="price" min="0.00" max="10000.00" step="0.01" v-model="editedItem.price" required/>
+
+                    <p>{{  Math.floor(100 * parseFloat(item.price) * parseFloat(item.quantity)) / 100 }}€</p>
+                    <div v-if="editingItemIndex != index && canEdit()" class="flex center-column edit-buttons">
+                        <span class="material-symbols-outlined clickable" @click="editItem(item, index)">
+                            edit
+                        </span>
+                    </div>
+                    <div v-if="editingItemIndex != index && canEdit()" class="flex center-column edit-buttons">
+                        <span class="material-symbols-outlined clickable red" @click="editItem(item, index)">
+                            cancel
+                        </span>
+                    </div>
+                    <div v-if="editingItemIndex == index && canEdit()" class="flex center-column edit-buttons">
+                        <span class="material-symbols-outlined clickable" @click="saveItem()">
+                            check
+                        </span>
+                    </div>
                 </div>
             </div>
         </div>
 
-
         <div id="approval-buttons">
             <button
-                v-if="(userData && userData.isIR) && ['pendingIR', 'refusedIR'].includes(order.status)"
+                v-if="isAuthor() && ['pendingIR'].includes(order.status)"
+                v-on:click="cancelOrder()">
+                Cancel Order
+            </button>
+
+            <button
+                v-if="isIR() && ['pendingIR', 'refusedIR'].includes(order.status)"
                 v-on:click="approvedByIR(false)">
                 Approve Order (RE)
             </button>
 
-
             <button
-                v-if="(userData && userData.isIR) && ['pendingIR', 'refusedIR'].includes(order.status)"
+                v-if="isIR() && ['pendingIR', 'refusedIR'].includes(order.status)"
                 v-on:click="approvedByIR(true)">
                 Approve Order (RE) but Request PI Review
             </button>
 
             <button
-                v-if="(userData && userData.isIR) && ['pendingIR'].includes(order.status)"
+                v-if="isIR() && ['pendingIR'].includes(order.status)"
                 v-on:click="rejectedByIR()">
                 Reject Order (RE)
             </button>
 
             <button
-                v-if="(userData && userData.isPI) && ['pendingPI', 'refusedPI'].includes(order.status)"
+                v-if="isPI() && ['pendingPI', 'refusedPI'].includes(order.status)"
                 v-on:click="approvedByPI()">
                 Approve Order (PI)
             </button>
 
             <button
-                v-if="(userData && userData.isPI) && ['pendingPI'].includes(order.status)"
+                v-if="isPI() && ['pendingPI'].includes(order.status)"
                 v-on:click="rejectedByPI()">
                 Reject Order (PI)
             </button>
 
             <button
-                v-if="(userData && (userData.isPI || userData.isIR)) && ['processingOrder'].includes(order.status)"
+                v-if="isReviewer() && ['processingOrder'].includes(order.status)"
                 v-on:click="setAsOrdered()">
                 Mark as ordered
             </button>
 
             <button
-                v-if="(userData && (userData.isPI || userData.isIR)) && ['ordered'].includes(order.status)"
+                v-if="isReviewer() && ['ordered'].includes(order.status)"
                 v-on:click="setAsDelivered()">
                 Mark as delivered
             </button>
 
             <button
-                v-if="(userData && (userData.isPI || userData.isIR)) && ['received'].includes(order.status)"
+                v-if="isReviewer() && ['received'].includes(order.status)"
                 v-on:click="setAsCompleted()">
                 Mark as completed
             </button>
@@ -356,7 +515,13 @@ export default {
 
 .orderview-table {
     border: 3px solid transparent !important;
-    grid-template-columns: 2fr 3fr 6rem 7rem 8rem;
+    grid-template-columns: 2fr 3fr 6rem 7rem 6rem;
+    cursor: initial !important;
+}
+
+.orderview-table-edit {
+    border: 3px solid transparent !important;
+    grid-template-columns: 2fr 3fr 6rem 7rem 6rem 4rem 5rem;
     cursor: initial !important;
 }
 
@@ -365,6 +530,11 @@ export default {
         width: 768px;
     }
 }
+
+.edit-buttons {
+    justify-content: center;
+}
+
 
 #pi-review-div {
     display: flex;
@@ -476,9 +646,6 @@ export default {
 .update-comment {
     padding: 0 !important;
     background-color: var(--color-secondary);
-}
-
-.update-comment {
     border: 3px solid var(--color-text-primary);
     border-radius: 0.5rem;
 }
@@ -496,6 +663,7 @@ export default {
     background-color: var(--color-secondary);
     border-radius: 0.5rem;
     white-space: pre-wrap;
+    overflow: hidden;
 }
 
 .update-comment > .update-header {

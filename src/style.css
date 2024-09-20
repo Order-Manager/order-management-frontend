@@ -73,9 +73,17 @@ input, select, button, textarea {
   transition: border-color 0.25s;
 }
 
-button:hover, input:hover, select:hover, textarea:hover {
+button:hover, select:hover, textarea:hover {
   cursor: pointer;
   border-color: var(--color-text-primary);
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+input:hover {
+  cursor: text;
 }
 
 button:active, input:active, select:active, textarea:active {
@@ -212,6 +220,7 @@ tr:hover {
   background-color: var(--color-secondary) !important;
   /* border-color: var(--color-text-primary); */
 }
+
 
 
 .table {

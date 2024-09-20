@@ -44,7 +44,7 @@
 // - date
 // - author (IR or PI)
 
-export const completedStatuses = ["completed", "refusedPI", "refusedIR"];
+export const completedStatuses = ["completed", "refusedPI", "refusedIR", "cancelled"];
 
 
 export const updateTypesToMessage = {
@@ -59,7 +59,8 @@ export const updateTypesToMessage = {
     'review-pi-refused': "Refused by a Principal Investigator",
     'order-processed': "Order Processed",
     'order-received': "Order Delivered, waiting for pick up",
-    'order-completed': "Order completed"
+    'order-completed': "Order completed",
+    'order-items-updated': "Order items updated",
 }
 
 export const statusTypesToMessage = {
@@ -71,6 +72,7 @@ export const statusTypesToMessage = {
     "ordered": "Ordered",
     "received": "Waiting for Pick Up",
     "completed": "Completed",
+    "cancelled": "Cancelled",
 };
 
 export const statusTypesToColor = {
@@ -82,6 +84,7 @@ export const statusTypesToColor = {
     "ordered": "blue",
     "received": "blue",
     "completed": "green",
+    "cancelled": "red",
 };
 
 export const updateTypesToColor = {
@@ -96,7 +99,8 @@ export const updateTypesToColor = {
     "review-pi-refused": "red",
     "order-processed": "blue",
     "order-received": "blue",
-    "order-completed": "green"
+    "order-completed": "green",
+    "order-items-updated": "orange",
 }
 
 export const updateTypesToIcon = {
@@ -111,7 +115,8 @@ export const updateTypesToIcon = {
     "review-pi-refused": "close",
     "order-processed": "check",
     "order-received": "check",
-    "order-completed": "check"
+    "order-completed": "check",
+    "order-items-updated": "edit",
 }
 
 export const tagsTypes = [

@@ -53,9 +53,40 @@ def updateLastUpdate(event: firestore_fn.Event[firestore_fn.DocumentSnapshot | N
     before = event.data.before.to_dict()
     after = event.data.after.to_dict()
 
+    if before.get("items") != after.get("items"):
+        current_updates = before.get("updates")
+
+        update = {
+            "type": "order-items-updated",
+            "date": datetime.datetime.now(),
+            "author": after.get("requestedBy")
+        }
+
+        current_updates.append(update)
+
+        event.data.after.reference.update({
+            "updates": current_updates,
+            "lastUpdate": datetime.datetime.now()
+        })
+
     if before.get("status") != after.get("status"):
 
         current_updates = before.get("updates")
+
+        if after.get("status") == "cancelled":
+
+            update = {
+                "type": "order-cancelled",
+                "date": datetime.datetime.now(),
+                "author": after.get("cancelledBy")
+            }
+
+            current_updates.append(update)
+
+            event.data.after.reference.update({
+                "updates": current_updates,
+                "lastUpdate": datetime.datetime.now()
+            })
 
         if after.get("status") == "approvedIR":
 

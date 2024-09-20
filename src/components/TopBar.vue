@@ -1,5 +1,7 @@
 <script>
-import { useCurrentUser } from 'vuefire'
+import { useDocument, useFirestore, useCurrentUser, useCollection } from 'vuefire'
+import { doc } from "firebase/firestore";
+
 import { ref } from 'vue'
 
 import Tab from './Tab.vue'
@@ -19,14 +21,22 @@ export default {
             this.showTab = !this.showTab
         },
         goToHome() {
-            this.$router.push('/')
+            const db = useFirestore()
+            const userData = useDocument(doc(db, 'admins', this.currentUser.uid))
+
+            if (userData && (userData.value.isIR || userData.value.isPI)) {
+                this.$router.push('/all')
+            } else {
+                this.$router.push('/')
+            }
         }
     },
     setup() {
-        const user = useCurrentUser();
+        const currentUser = useCurrentUser();
         const showTab = ref(false);
+
         return {
-            user, showTab
+            currentUser, showTab
         }
     }
 }
@@ -48,9 +58,9 @@ export default {
                 <input type="checkbox" />
                 <span class="slider round"></span>
             </label> -->
-            <p v-if="user">{{ user.email }}</p>
-            <button id="login-button" class="alt-button" v-on:click="login()" v-if="user == undefined">Login</button>
-            <button id="login-button" class="alt-button" v-on:click="signOut()" v-if="user">Sign Out</button>
+            <p v-if="currentUser">{{ currentUser.email }}</p>
+            <button id="login-button" class="alt-button" v-on:click="login()" v-if="currentUser == undefined">Login</button>
+            <button id="login-button" class="alt-button" v-on:click="signOut()" v-if="currentUser">Sign Out</button>
         </div>
     </nav>
 
