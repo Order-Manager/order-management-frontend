@@ -230,9 +230,9 @@ export default {
             // Update Firestore
             const db = useFirestore();
             const orderRef = doc(db, 'orders', this.order_id);
-            // updateDoc(orderRef, {
-            //     items: this.order.items,
-            // });
+            updateDoc(orderRef, {
+                items: this.order.items,
+            });
 
             this.showSuccess("Item deleted!");
             } catch (error) {
@@ -348,7 +348,7 @@ export default {
                         </span>
                     </div>
                     <div v-if="editingItemIndex != index && canEdit()" class="flex center-column edit-buttons">
-                        <span class="material-symbols-outlined clickable red" @click="editItem(item, index)">
+                        <span class="material-symbols-outlined clickable red" @click="deleteItem(index)">
                             cancel
                         </span>
                     </div>
