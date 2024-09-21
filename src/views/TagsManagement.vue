@@ -5,6 +5,9 @@ import { collection, addDoc, doc, updateDoc } from "firebase/firestore";
 
 import {useRouter} from 'vue-router'
 
+import { useToast } from "vue-toastification";
+
+
 export default {
     components: {
         Return
@@ -26,14 +29,35 @@ export default {
 
             this.newTagName = ''
             this.newTagType = ''
+
+            this.showSuccess('Tag added')
         },
         changeHidden(tag) {
             const db = useFirestore()
             const tagRef = doc(db, 'tags', tag.id)
+
+            if (tag.hidden) {
+                this.showInfo(`Tag hidden: ${tag.name} (${tag.type})`)
+            } else {
+                this.showInfo(`Tag shown: ${tag.name} (${tag.type})`)
+            }
+
             updateDoc(tagRef, {
                 hidden: tag.hidden
             })
-        }
+        },
+        showError(message) {
+            this.toast.error(message);
+        },
+        showSuccess(message) {
+            this.toast.success(message);
+        },
+        showWarning(message) {
+            this.toast.warning(message);
+        },
+        showInfo(message) {
+            this.toast.info(message);
+        },
     },
     props: {
         order_id: String,
@@ -59,8 +83,10 @@ export default {
             return
         }
 
+        const toast = useToast()
+
         return {
-            tags
+            tags, toast
         }
     }
 }

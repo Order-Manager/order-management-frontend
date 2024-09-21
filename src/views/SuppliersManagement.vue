@@ -5,6 +5,8 @@ import { collection, addDoc, doc, updateDoc } from "firebase/firestore";
 
 import {useRouter} from 'vue-router'
 
+import { useToast } from "vue-toastification";
+
 export default {
     components: {
         Return
@@ -24,6 +26,8 @@ export default {
                 hidden: false
             })
 
+            this.showSuccess(`Supplier added: ${this.newSupplierName}`)
+
             this.newSupplierName = ''
             this.newSupplierWebpage = ''
         },
@@ -33,7 +37,25 @@ export default {
             updateDoc(supplierRef, {
                 hidden: supplier.hidden
             })
-        }
+
+            if (supplier.hidden) {
+                this.showInfo(`Supplier hidden: ${supplier.name}`)
+            } else {
+                this.showInfo(`Supplier shown: ${supplier.name}`)
+            }
+        },
+        showError(message) {
+            this.toast.error(message);
+        },
+        showSuccess(message) {
+            this.toast.success(message);
+        },
+        showWarning(message) {
+            this.toast.warning(message);
+        },
+        showInfo(message) {
+            this.toast.info(message);
+        },
     },
     props: {
         order_id: String,
@@ -59,8 +81,10 @@ export default {
             return
         }
 
+        const toast = useToast();
+
         return {
-            suppliers
+            suppliers, toast
         }
     }
 }
