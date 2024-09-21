@@ -33,7 +33,7 @@ export default {
         )
       );
     const sortedByCreationDate = ref(false);
-    const showCompleted = ref(true);
+    const showCompleted = ref(false);
     return { userData, completedStatuses, showCompleted, orders, sortedByCreationDate, statusTypesToMessage, statusTypesToColor };
   },
   components: {
