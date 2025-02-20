@@ -74,6 +74,8 @@
 
     .tag-tab {
         display: none;
+        flex-wrap: wrap;
+        justify-content: center;
         padding: 0.5rem 0;
         gap: 0.5rem;
     }

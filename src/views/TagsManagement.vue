@@ -1,7 +1,16 @@
 <script>
 import Return from '../components/Return.vue'
 import { useFirestore, useCurrentUser, useCollection, useDocument } from 'vuefire'
-import { collection, addDoc, doc, updateDoc } from "firebase/firestore";
+
+import {
+    collection,
+    addDoc,
+    updateDoc,
+    doc,
+    query,
+    where,
+    orderBy
+} from 'firebase/firestore'
 
 import {useRouter} from 'vue-router'
 
@@ -59,12 +68,23 @@ export default {
             this.toast.info(message);
         },
     },
+    data() {
+        return {
+            newTagName: '',
+            newTagType: ''
+        }
+    },
     props: {
         order_id: String,
     },
     setup() {
         const db = useFirestore()
-        const tags = useCollection(collection(db, 'tags'))
+        const tags = useCollection(
+            query(
+                collection(db, 'tags'),
+                orderBy('name')
+            )
+        )
 
         const currentUser = useCurrentUser();
 

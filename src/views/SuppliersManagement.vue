@@ -1,7 +1,13 @@
 <script>
 import Return from '../components/Return.vue'
 import { useFirestore, useCurrentUser, useCollection, useDocument } from 'vuefire'
-import { collection, addDoc, doc, updateDoc } from "firebase/firestore";
+import {
+    collection,
+    addDoc, doc,
+    updateDoc,
+    query,
+    orderBy
+} from "firebase/firestore";
 
 import {useRouter} from 'vue-router'
 
@@ -62,7 +68,12 @@ export default {
     },
     setup() {
         const db = useFirestore()
-        const suppliers = useCollection(collection(db, 'suppliers'))
+        const suppliers = useCollection(
+            query(
+                collection(db, 'suppliers'),
+                orderBy('name')
+            )
+        )
 
         const currentUser = useCurrentUser();
 

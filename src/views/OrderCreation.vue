@@ -12,7 +12,8 @@
         collection,
         addDoc,
         query,
-        where
+        where,
+        orderBy
     } from 'firebase/firestore'
 
     import {
@@ -24,7 +25,6 @@
     import { useToast } from "vue-toastification";
 
 
-
     export default {
         components: {
             Return, TagComponent
@@ -34,7 +34,6 @@
                 try {
                 // 1. Form Data & Validation
                 const title = document.getElementById('title').value;
-                const supplierName = document.getElementById('supplier').value;
                 const comment = document.getElementById('comment').value;
                 const priority = document.querySelector('input[name="priority"]:checked').value;
 
@@ -53,6 +52,8 @@
                     return;
                 }
 
+                const supplierUrl = this.selectedSupplier.webpage.split("https://www.").slice(-1)[0].split("https://").slice(-1)[0];
+
                 for (const item of itemsList) {
                     const link = item.querySelector('input[name="link"]').value;
                     const type = item.querySelector('select[name="item-type"]').value;
@@ -62,6 +63,13 @@
 
                     if ((type === 'item' || type === 'cart') && link.length === 0) {
                         this.showError("Please provide a link for all items and carts.");
+                        return;
+                    }
+
+                    const croppedLink = link.split("https://www.").slice(-1)[0].split("https://").slice(-1)[0];
+
+                    if ((type === 'item' || type === 'cart') && !croppedLink.startsWith(supplierUrl)) {
+                        this.showError("The link of the item must start with the supplier's webpage.");
                         return;
                     }
 
@@ -87,7 +95,7 @@
                     requestedById: uid,
                     status: 'pendingIR',
                     title,
-                    supplier: supplierName,
+                    supplier: this.selectedSupplier.name,
                     items,
                     comment,
                     updates: [],
@@ -107,10 +115,10 @@
                 this.$router.push('/');
 
                 } catch (error) {
-                // 4. Error Handling
-                console.error("Error creating order:", error);
-                // Show an error message to the user
-                this.showError("An error occurred while creating the order.");
+                    // 4. Error Handling
+                    console.error("Error creating order:", error);
+                    // Show an error message to the user
+                    this.showError("An error occurred while creating the order.");
                 }
             },
             showError(message) {
@@ -167,21 +175,29 @@
             }
         },
         data() {
-            return { items: [{
-                type: 'item',
-                link: '',
-                name: '',
-                quantity: 1,
-                price: 0.00
-            }] }
+            return {
+                items: [{
+                    type: 'item',
+                    link: '',
+                    name: '',
+                    quantity: 1,
+                    price: 0.00
+                }],
+                selectedSupplier: {
+                    name: '',
+                    webpage: ''
+                }
+            }
         },
         setup() {
             const db = useFirestore()
             const suppliers = useCollection(
                 query(
                     collection(db, 'suppliers'),
-                    where('hidden', '!=', true)
-                ))
+                    where('hidden', '!=', true),
+                    orderBy('name')
+                )
+            );
             const user = useCurrentUser()
 
             const tags = useCollection(collection(db, 'tags'));
@@ -195,7 +211,14 @@
         },
         mounted() {
             this.openTab('project');
-            // console.log(this.tagsTypes)
+        },
+        watch: {
+            suppliers: {
+                immediate: true,
+                handler() {
+                    this.selectedSupplier = this.suppliers[0];
+                }
+            }
         }
     }
 </script>
@@ -214,10 +237,12 @@
             </div>
             <div class="order-form-category">
                 <label class="category-label" for="supplier">Supplier</label>
-                <select id="supplier" name="supplier" required>
-                    <option v-for="supplier in suppliers" :value="supplier.name" v-bind:key="supplier.name">
-                        {{ supplier.name }}</option>
-                </select>
+                <div class="flex center-row" style="gap: 1rem;">
+                    <select id="supplier" name="supplier" v-model="selectedSupplier" required>
+                        <option v-for="supplier in suppliers" :value="supplier" v-bind:key="supplier">{{ supplier.name }}</option>
+                    </select>
+                    <p class="blue" style="margin: 0">The links of the items must start with {{ selectedSupplier.webpage }}</p>
+                </div>
             </div>
             <div class="order-form-category">
                 <label class="category-label">Tags</label>
@@ -264,7 +289,7 @@
                             <option value="cart">Cart</option>
                             <option value="stock">Stock</option>
                             </select>
-                            <input type="url" name="link" v-model="item.link" required>
+                            <input type="url" name="link" v-model="item.link" :pattern="selectedSupplier && selectedSupplier.webpage ? '^https://(www\.)?' + selectedSupplier.webpage.split('https://www.').slice(-1)[0].split('https://').slice(-1)[0] + '.*' : ''" required>
                             <input type="text" name="name" v-model="item.name" required>
                             <input type="number" name="quantity" v-model="item.quantity" required>
                             <input type="number" name="price" min="0.00" max="10000.00" step="0.01" v-model="item.price" required/>
