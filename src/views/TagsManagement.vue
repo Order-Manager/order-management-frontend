@@ -16,6 +16,8 @@ import {
 
 import { useToast } from "vue-toastification";
 
+import { tagsTypes } from '../utils/definitions'
+
 
 export default {
     methods: {
@@ -118,7 +120,7 @@ export default {
         const toast = useToast()
 
         return {
-            tags, toast, isAdmin, userData
+            tags, toast, isAdmin, userData, tagsTypes
         }
     }
 }
@@ -147,7 +149,11 @@ export default {
                 <tr v-for="tag in tags" :key="tag.id">
                     <template v-if="tag.editing">
                         <td><input type="text" v-model="tag.newName" :aria-label="`Name of ${tag.name}`" /></td>
-                        <td><input type="text" v-model="tag.newType" :aria-label="`Type of ${tag.name}`" /></td>
+                        <td>
+                            <select v-model="tag.newType" :aria-label="`Type of ${tag.name}`">
+                                <option v-for="type in tagsTypes" :key="type" :value="type">{{ type }}</option>
+                            </select>
+                        </td>
                     </template>
                     <template v-else>
                         <td>{{ tag.name }}</td>
@@ -186,7 +192,10 @@ export default {
                 </div>
                 <div class="add-field">
                     <label for="new-tag-type">Type</label>
-                    <input id="new-tag-type" type="text" v-model="newTagType" required />
+                    <select id="new-tag-type" v-model="newTagType" required>
+                        <option value="" disabled>Choose a type</option>
+                        <option v-for="type in tagsTypes" :key="type" :value="type">{{ type }}</option>
+                    </select>
                 </div>
             <button type="submit" class="primary add-button">
                 <span class="material-symbols-outlined" aria-hidden="true">add_circle</span>

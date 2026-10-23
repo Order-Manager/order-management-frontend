@@ -1,5 +1,5 @@
 <script>
-        import TagComponent from '../components/Tags.vue'
+    import TagComponent from '../components/Tags.vue'
     import {
         ref
     } from 'vue'
@@ -20,6 +20,7 @@
     } from "vuefire";
 
     import { tagsTypes } from '../utils/definitions'
+    import { formatEuros, orderTotal } from '../utils/dates.js'
 
     import { useToast } from "vue-toastification";
 
@@ -29,85 +30,90 @@
             TagComponent
         },
         methods: {
+            // One message per field, keyed by the field's id; empty when the form is valid
+            validate() {
+                const errors = {};
+                if (this.title.trim().length === 0) errors.title = "Give your order a title.";
+                if (this.selectedTags.length === 0) errors.tags = "Select at least one tag.";
+                if (this.items.length === 0) errors.items = "Add at least one item.";
+
+                const strip = (url) => url.split("https://www.").slice(-1)[0].split("https://").slice(-1)[0];
+                const supplierUrl = strip(this.selectedSupplier ? this.selectedSupplier.webpage : "");
+
+                this.items.forEach((item, index) => {
+                    const needsLink = item.type === 'item' || item.type === 'cart';
+                    if (item.name.trim().length === 0) errors[`item-${index}-name`] = "Name this item.";
+                    if (needsLink && item.link.trim().length === 0) {
+                        errors[`item-${index}-link`] = "Paste the link to the item.";
+                    } else if (needsLink && !strip(item.link.trim()).startsWith(supplierUrl)) {
+                        errors[`item-${index}-link`] = `The link must start with ${this.selectedSupplier.webpage}.`;
+                    }
+                    if (!(Number(item.quantity) > 0)) errors[`item-${index}-quantity`] = "Quantity must be at least 1.";
+                    if (!(Number(item.price) >= 0)) errors[`item-${index}-price`] = "Enter a price, or 0 if unknown.";
+                });
+                return errors;
+            },
             async createOrder(email, uid) {
-                try {
-                // 1. Form Data & Validation
-                const title = this.title.trim();
-                const comment = this.comment;
-                const priority = this.priority;
-
-                const items = [];
-
-                if (title.length === 0) {
-                    this.showError("Please provide a title for the order.");
+                this.attempted = true;
+                this.errors = this.validate();
+                const invalid = Object.keys(this.errors);
+                if (invalid.length) {
+                    this.formMessage = `Please fix ${invalid.length} field${invalid.length === 1 ? '' : 's'} before ${this.isDraft ? 'saving' : 'creating the order'}.`;
+                    // Move focus to the first field that needs fixing, in page order
+                    this.$nextTick(() => {
+                        const selector = this.errors.title ? '#title'
+                            : this.errors.tags ? '.tag-tab button, #tags-types-div button'
+                            : this.errors.items ? '#add-item-button'
+                            : '[aria-invalid="true"]';
+                        this.$el.querySelector(selector)?.focus();
+                    });
                     return;
                 }
+                this.formMessage = "";
 
-                if (this.selectedTags.length === 0) {
-                    this.showError("Please select at least one tag.");
-                    return;
-                }
-
-                const supplierUrl = this.selectedSupplier.webpage.split("https://www.").slice(-1)[0].split("https://").slice(-1)[0];
-
-                for (const { link, type, name, quantity, price } of this.items) {
-                    if ((type === 'item' || type === 'cart') && link.length === 0) {
-                        this.showError("Please provide a link for all items and carts.");
-                        return;
-                    }
-
-                    const croppedLink = link.split("https://www.").slice(-1)[0].split("https://").slice(-1)[0];
-
-                    if ((type === 'item' || type === 'cart') && !croppedLink.startsWith(supplierUrl)) {
-                        this.showError("The link of the item must start with the supplier's webpage.");
-                        return;
-                    }
-
-                    if (name.length === 0) {
-                        this.showError("Please provide a name for all items.");
-                        return;
-                    }
-
-                    if (quantity <= 0) {
-                        this.showError("Quantity must be greater than 0.");
-                        return;
-                    }
-
-                    items.push({ type, link, name, quantity: String(quantity), price: String(price) });
-                }
-
+                const items = this.items.map(({ type, link, name, quantity, price }) => (
+                    { type, link: link.trim(), name: name.trim(), quantity: String(quantity), price: String(price) }
+                ));
                 const status = this.isDraft ? 'draft' : 'pendingIR';
 
-                // 2. Firestore Interaction
-                const db = useFirestore();
-                await addDoc(collection(db, 'orders'), {
-                    creationDate: new Date(),
-                    lastUpdate: new Date(),
-                    requestedBy: email,
-                    requestedById: uid,
-                    status: status,
-                    title,
-                    supplier: this.selectedSupplier.name,
-                    items,
-                    comment,
-                    updates: [],
-                    tags: this.selectedTags.map(tag => tag.id),
-                    priority
-                });
+                this.submitting = true;
+                try {
+                    const db = useFirestore();
+                    await addDoc(collection(db, 'orders'), {
+                        creationDate: new Date(),
+                        lastUpdate: new Date(),
+                        requestedBy: email,
+                        requestedById: uid,
+                        status: status,
+                        title: this.title.trim(),
+                        supplier: this.selectedSupplier.name,
+                        items,
+                        comment: this.comment,
+                        updates: [],
+                        tags: this.selectedTags.map(tag => tag.id),
+                        priority: this.priority
+                    });
 
-                // 3. Success Handling and Redirect
-                // Optionally show a success message
-                this.showSuccess("Order created successfully!");
-
-                this.$router.push('/');
-
+                    try { localStorage.setItem('orderTipsSeen', '1') } catch (e) {}
+                    this.showSuccess(this.isDraft ? "Draft saved." : "Order created. A research engineer will review it.");
+                    this.$router.push('/');
                 } catch (error) {
-                    // 4. Error Handling
                     console.error("Error creating order:", error);
-                    // Show an error message to the user
-                    this.showError("An error occurred while creating the order.");
+                    this.showError("Could not save the order: " + error.message);
+                } finally {
+                    this.submitting = false;
                 }
             },
+            // After a failed submit, errors follow the user's edits; the summary only clears once all is fixed
+            revalidate() {
+                if (!this.attempted) return;
+                this.errors = this.validate();
+                if (Object.keys(this.errors).length === 0) this.formMessage = "";
+            },
+            fieldError(id) {
+                return this.errors[id] || "";
+            },
+            formatEuros, orderTotal,
             async saveAsDraft(email, uid) {
                 this.isDraft = true;
                 await this.createOrder(email, uid);
@@ -135,7 +141,6 @@
             },
             removeItem(index) {
                 this.items.splice(index, 1);
-                this.showInfo("Item removed.");
             },
             async pasteItemFromClipboard() {
                 try {
@@ -172,7 +177,12 @@
                 isDraft: false,
                 title: '',
                 comment: '',
-                priority: 'low'
+                priority: 'low',
+                errors: {},
+                attempted: false,
+                formMessage: '',
+                submitting: false,
+                tipsOpen: (() => { try { return !localStorage.getItem('orderTipsSeen') } catch (e) { return true } })()
             }
         },
         setup() {
@@ -196,6 +206,24 @@
             }
         },
         watch: {
+            title() {
+                this.revalidate();
+            },
+            selectedSupplier() {
+                this.revalidate();
+            },
+            items: {
+                deep: true,
+                handler() {
+                    this.revalidate();
+                }
+            },
+            selectedTags: {
+                deep: true,
+                handler() {
+                    this.revalidate();
+                }
+            },
             suppliers: {
                 immediate: true,
                 handler() {
@@ -212,18 +240,25 @@
             <h1 class="page-title">New order</h1>
         </div>
         <form id="order-creation-form" novalidate @submit.prevent="createOrder(user.email, user.uid)">
-            <section id="order-guidelines" aria-labelledby="guidelines-title">
-                <h2 id="guidelines-title">If you want your order to be accepted</h2>
+            <details id="order-guidelines" :open="tipsOpen" @toggle="tipsOpen = $event.target.open">
+                <summary>
+                    <span class="material-symbols-outlined" aria-hidden="true">lightbulb</span>
+                    Tips for getting your order accepted
+                </summary>
                 <ul>
                     <li>Give a clear title to your order</li>
                     <li>Give a clear name to each item including the options you want e.g. “Acrylic sheet 3x200x300mm”</li>
                     <li>Delivery options - price and date - should be reasonable</li>
                     <li>If you need to order several items, try to find them on the same supplier before placing several orders</li>
                 </ul>
-            </section>
+            </details>
             <div class="order-form-category">
                 <label class="category-label" for="title">Title</label>
-                <input type="text" id="title" name="title" v-model="title" required>
+                <div class="field">
+                    <input type="text" id="title" name="title" v-model="title" required
+                        :aria-invalid="!!fieldError('title')" aria-describedby="title-error">
+                    <p id="title-error" class="field-error">{{ fieldError('title') }}</p>
+                </div>
             </div>
             <div class="order-form-category">
                 <label class="category-label" for="supplier">Supplier</label>
@@ -234,7 +269,7 @@
                     <p id="supplier-hint" class="blue" style="margin: 0">The links of the items must start with <a :href="selectedSupplier ? selectedSupplier.webpage : ''">{{ selectedSupplier ? selectedSupplier.webpage : '' }}</a>. If your supplier is not in the list, please contact <a href="mailto:dvic@devinci.fr">dvic@devinci.fr</a>.</p>
                 </div>
             </div>
-            <fieldset class="order-form-category">
+            <fieldset class="order-form-category" aria-describedby="tags-error">
                 <legend class="category-label">Tags</legend>
                 <div class="full-width">
                     <p id="selected-tags" aria-live="polite">
@@ -243,6 +278,7 @@
                         <span v-else>{{ selectedTags.map(tag => tag.name).join(", ") }}</span>
                     </p>
                     <TagComponent :selectedTags="selectedTags" />
+                    <p id="tags-error" class="field-error">{{ fieldError('tags') }}</p>
                 </div>
             </fieldset>
             <fieldset class="order-form-category">
@@ -288,10 +324,26 @@
                                             <option value="stock">Stock</option>
                                         </select>
                                     </td>
-                                    <td data-label="Name"><input type="text" name="name" v-model="item.name" required :aria-label="`Item ${index + 1} name`"></td>
-                                    <td data-label="Link"><input type="url" name="link" v-model="item.link" required :aria-label="`Item ${index + 1} link`"></td>
-                                    <td data-label="Quantity"><input type="number" inputmode="numeric" name="quantity" v-model="item.quantity" min="1" required :aria-label="`Item ${index + 1} quantity`"></td>
-                                    <td data-label="Unit price (€)"><input type="number" inputmode="decimal" name="price" min="0.000" max="10000.00" step="0.001" v-model="item.price" required :aria-label="`Item ${index + 1} unit price in euros`"/></td>
+                                    <td data-label="Name">
+                                        <input type="text" name="name" v-model="item.name" required :aria-label="`Item ${index + 1} name`"
+                                            :id="`item-${index}-name`" :aria-invalid="!!fieldError(`item-${index}-name`)" :aria-describedby="`item-${index}-name-error`">
+                                        <p :id="`item-${index}-name-error`" class="field-error">{{ fieldError(`item-${index}-name`) }}</p>
+                                    </td>
+                                    <td data-label="Link">
+                                        <input type="url" name="link" v-model="item.link" required :aria-label="`Item ${index + 1} link`"
+                                            :id="`item-${index}-link`" :aria-invalid="!!fieldError(`item-${index}-link`)" :aria-describedby="`item-${index}-link-error`">
+                                        <p :id="`item-${index}-link-error`" class="field-error">{{ fieldError(`item-${index}-link`) }}</p>
+                                    </td>
+                                    <td data-label="Quantity">
+                                        <input type="number" inputmode="numeric" name="quantity" v-model="item.quantity" min="1" required :aria-label="`Item ${index + 1} quantity`"
+                                            :id="`item-${index}-quantity`" :aria-invalid="!!fieldError(`item-${index}-quantity`)" :aria-describedby="`item-${index}-quantity-error`">
+                                        <p :id="`item-${index}-quantity-error`" class="field-error">{{ fieldError(`item-${index}-quantity`) }}</p>
+                                    </td>
+                                    <td data-label="Unit price (€)">
+                                        <input type="number" inputmode="decimal" name="price" min="0.000" max="10000.00" step="0.001" v-model="item.price" required :aria-label="`Item ${index + 1} unit price in euros`"
+                                            :id="`item-${index}-price`" :aria-invalid="!!fieldError(`item-${index}-price`)" :aria-describedby="`item-${index}-price-error`"/>
+                                        <p :id="`item-${index}-price-error`" class="field-error">{{ fieldError(`item-${index}-price`) }}</p>
+                                    </td>
                                     <td class="col-actions">
                                         <button type="button" class="icon-button red" @click="removeItem(index)" :aria-label="`Remove item ${index + 1}`" title="Remove item">
                                             <span class="material-symbols-outlined" aria-hidden="true">delete</span>
@@ -302,8 +354,10 @@
                         </table>
                     </div>
 
+                    <p class="items-total">Total: <strong>{{ formatEuros(orderTotal(items)) }}</strong></p>
+                    <p id="items-error" class="field-error">{{ fieldError('items') }}</p>
                     <div class="full-width center-both">
-                        <button type="button" class="icon-button add-item" v-on:click="addItem()" aria-label="Add item" title="Add item">
+                        <button type="button" id="add-item-button" class="icon-button add-item" v-on:click="addItem()" aria-label="Add item" title="Add item">
                             <span class="material-symbols-outlined" aria-hidden="true">add_circle</span>
                         </button>
                         <button type="button" class="icon-button add-item" v-on:click="pasteItemFromClipboard()" aria-label="Paste item" title="Paste item">
@@ -316,9 +370,10 @@
                 <label class="category-label" for="comment">Comment</label>
                 <textarea id="comment" name="comment" v-model="comment" rows="3"></textarea>
             </div>
+            <p class="field-error form-message" role="alert">{{ formMessage }}</p>
             <div class="center-row medium-gap form-actions">
-                <button type="submit" class="primary" @click="isDraft = false">Create order</button>
-                <button type="button" v-on:click="saveAsDraft(user.email, user.uid)">Save as draft</button>
+                <button type="submit" class="primary" @click="isDraft = false" :disabled="submitting">{{ submitting && !isDraft ? 'Creating…' : 'Create order' }}</button>
+                <button type="button" v-on:click="saveAsDraft(user.email, user.uid)" :disabled="submitting">{{ submitting && isDraft ? 'Saving…' : 'Save as draft' }}</button>
             </div>
         </form>
     </div>
@@ -389,22 +444,53 @@
     }
 
     #order-guidelines {
-        background-color: var(--color-primary);
-        border: 1px solid var(--red);
-        border-radius: 1rem;
-        margin: 1rem auto;
-        padding: 1rem;
-        color: var(--red);
+        margin: 0 0 var(--space-6) 0;
+        padding: var(--space-3) var(--space-4);
+        border-radius: var(--radius);
+        border: 1px solid var(--border-muted);
+        background-color: var(--bg);
     }
 
-    #order-guidelines h2 {
-        margin: 0;
-        font-size: 1rem;
-        text-transform: uppercase;
+    #order-guidelines summary {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+        min-height: 2.75rem;
+        cursor: pointer;
+        color: var(--text);
+    }
+
+    #order-guidelines summary .material-symbols-outlined {
+        color: var(--orange);
+    }
+
+    #order-guidelines ul {
+        margin: var(--space-2) 0 var(--space-2) 0;
+        color: var(--text-muted);
+    }
+
+    .field {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .items-total {
+        margin: var(--space-3) 0 0 0;
+        text-align: right;
+        color: var(--text-muted);
+    }
+
+    .items-total strong {
+        color: var(--text);
+    }
+
+    .form-message {
+        margin-bottom: var(--space-3);
     }
 
     #title {
-        width: calc(100% - 2rem);
+        width: 100%;
+        box-sizing: border-box;
     }
 
     #selected-tags {
