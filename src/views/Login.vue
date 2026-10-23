@@ -57,7 +57,11 @@
             const toast = useToast();
 
 
-            if (isSignInWithEmailLink(auth, window.location.href)) {
+            // Links sent by the other environment (dev vs prod) carry the other project's API key
+            const linkApiKey = window.location.href.match(/[?&]apiKey=([^&#]+)/);
+            if (linkApiKey && linkApiKey[1] !== auth.app.options.apiKey) {
+                toast.error('This login link was sent by another version of the site. Please request a new one here.');
+            } else if (isSignInWithEmailLink(auth, window.location.href)) {
                 let email = window.localStorage.getItem('emailForSignIn');
                 if (!email) {
                     email = window.prompt('Please provide your email for confirmation');
