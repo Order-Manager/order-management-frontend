@@ -88,11 +88,11 @@ export default {
 
 <template>
   <div class="inventory-view full-width center-column">
-    <button class="back-btn" @click="goBack">← Back</button>
+    <button type="button" class="back-btn" @click="goBack">← Back</button>
     <h1>Edit Inventory Item</h1>
     <div v-if="item" class="edit-card">
       <div class="item-image center-both">
-        <img :src="image" alt="Item Image" v-if="image" />
+        <img :src="image" :alt="name" v-if="image" />
       </div>
       <form @submit.prevent="saveChanges" class="edit-form">
         <label>
@@ -192,12 +192,6 @@ export default {
 .edit-form textarea,
 .edit-form select {
   padding: 0.5rem;
-  border: 1.5px solid #ccc;
-  border-radius: 8px;
-  background: #f4f4f5;
-  font-size: 1rem;
-  font-family: inherit;
-  color: var(--color-text-secondary);
 }
 .edit-form textarea {
   min-height: 60px;

@@ -71,16 +71,18 @@ export default {
 <template>
   <div class="item-view">
     <div class="center-row medium-gap">
-      <span class="material-symbols-outlined clickable" @click="returnToInventory">
-        arrow_back
-      </span>
+      <button type="button" class="icon-button" @click="returnToInventory" aria-label="Back to inventory">
+        <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+      </button>
       <h1 v-if="categoryId === 'all'">All Inventory Items</h1>
       <h1 v-else>{{ selectedCategory?.name || "Category" }}</h1>
     </div>
     <p v-if="categoryId !== 'all'">{{ selectedCategory?.description }}</p>
     <div class="search-bar">
+      <label for="inventory-search" class="visually-hidden">Search items</label>
       <input
-        type="text"
+        id="inventory-search"
+        type="search"
         v-model="searchQuery"
         placeholder="Search items..."
       />
@@ -99,24 +101,20 @@ export default {
             class="table-row inventorylist-table"
             v-for="item in filteredItems"
             :key="item.id"
-            tabindex="0"
             @click="goToItem(item)"
-            @auxclick="goToItem(item)"
-            @contextmenu.prevent
-            @keyup.enter="goToItem(item)"
         >
-            <img :src="item.image" alt="Item Image" />
-            <p>{{ item.name }}</p>
+            <img :src="item.image" alt="" />
+            <p><router-link :to="`/inventory/item/${item.id}`" @click.stop>{{ item.name }}</router-link></p>
             <p>{{ item.description }}</p>
             <p>{{ item.price }}€</p>
             <div class="center-both">
-                <span class="material-symbols-outlined clickable" @click="removeQuantity(item)">
-                    remove
-                </span>
-                <p>{{ item.quantity }}</p>
-                <span class="material-symbols-outlined clickable" @click="addQuantity(item)">
-                    add
-                </span>
+                <button type="button" class="icon-button" @click.stop="removeQuantity(item)" :aria-label="`One less ${item.name}`">
+                    <span class="material-symbols-outlined" aria-hidden="true">remove</span>
+                </button>
+                <p aria-live="polite">{{ item.quantity }}</p>
+                <button type="button" class="icon-button" @click.stop="addQuantity(item)" :aria-label="`One more ${item.name}`">
+                    <span class="material-symbols-outlined" aria-hidden="true">add</span>
+                </button>
             </div>
             <div>
                 <p

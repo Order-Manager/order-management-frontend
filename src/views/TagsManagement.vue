@@ -1,5 +1,5 @@
 <script>
-import Return from '../components/Return.vue'
+import { computed } from 'vue'
 import { useFirestore, useCurrentUser, useCollection, useDocument } from 'vuefire'
 
 import {
@@ -13,15 +13,11 @@ import {
     deleteDoc
 } from 'firebase/firestore'
 
-import {useRouter} from 'vue-router'
 
 import { useToast } from "vue-toastification";
 
 
 export default {
-    components: {
-        Return
-    },
     methods: {
         addTag() {
             const db = useFirestore()
@@ -104,9 +100,6 @@ export default {
             newTagType: ''
         }
     },
-    props: {
-        order_id: String,
-    },
     setup() {
         const db = useFirestore()
         const tags = useCollection(
@@ -118,102 +111,121 @@ export default {
 
         const currentUser = useCurrentUser();
 
-        if(currentUser.value == null) {
-            const router = useRouter()
-            router.push('/')
-            return
-        }
-
-        const userData = useDocument(doc(db, 'admins', currentUser.value.uid));
-        const isAdmin = userData.value != null && userData.value.isIR;
-
-        if(!isAdmin) {
-            const router = useRouter()
-            router.push('/')
-            return
-        }
+        // Rules only let admins write; this decides what to show once the admin record has loaded
+        const userData = useDocument(computed(() => currentUser.value && doc(db, 'admins', currentUser.value.uid)));
+        const isAdmin = computed(() => !!(userData.value && userData.value.isIR));
 
         const toast = useToast()
 
         return {
-            tags, toast
+            tags, toast, isAdmin, userData
         }
     }
 }
 </script>
 
 <template>
-    <Return />
-
     <div class="center-column">
-        <h2>Tags Management</h2>
+        <h1>Tags</h1>
     </div>
 
-    <div class="table">
-        <div class="table-header tags-table">
-            <p>Name</p>
-            <p>Type</p>
-            <p>Hide</p>
-            <p>Edit</p>
-        </div>
-        <div class="table-row tags-table"
-            v-for="tag in tags"
-            :key="tag.id"
-        >
-            <template v-if="tag.editing">
-                <input type="text" v-model="tag.newName" />
-                <input type="text" v-model="tag.newType" />
-                <div class="center-column center-both">
-                    <input type="checkbox" style="margin: 0.5rem;" v-model="tag.hidden" v-on:change="changeHidden(tag)" />
-                </div>
-                <div class="center-row">
-                    <span class="material-symbols-outlined clickable" @click="saveTag(tag)">save</span>
-                    <span class="material-symbols-outlined clickable" @click="cancelEdit(tag)">cancel</span>
-                    <span class="material-symbols-outlined clickable red" @click="deleteTag(tag)">delete</span>
-                </div>
-            </template>
-            <template v-else>
-                <p>{{ tag.name }}</p>
-                <p>{{ tag.type }}</p>
-                <div class="center-column center-both">
-                    <input type="checkbox" v-model="tag.hidden" v-on:change="changeHidden(tag)" />
-                </div>
-                <div class="center-column">
-                    <span class="material-symbols-outlined clickable" @click="editTag(tag)">edit</span>
-                </div>
-            </template>
-        </div>
+    <p v-if="!isAdmin" role="status">{{ userData === undefined ? 'Loading…' : 'Only research engineers can manage tags.' }}</p>
+
+    <template v-else>
+    <div class="table-scroll">
+        <table class="data-table tags-table">
+            <caption class="visually-hidden">Tags</caption>
+            <thead>
+                <tr>
+                    <th scope="col">Name</th>
+                    <th scope="col">Type</th>
+                    <th scope="col">Hidden</th>
+                    <th scope="col"><span class="visually-hidden">Actions</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="tag in tags" :key="tag.id">
+                    <template v-if="tag.editing">
+                        <td><input type="text" v-model="tag.newName" :aria-label="`Name of ${tag.name}`" /></td>
+                        <td><input type="text" v-model="tag.newType" :aria-label="`Type of ${tag.name}`" /></td>
+                    </template>
+                    <template v-else>
+                        <td>{{ tag.name }}</td>
+                        <td>{{ tag.type }}</td>
+                    </template>
+                    <td>
+                        <input type="checkbox" v-model="tag.hidden" v-on:change="changeHidden(tag)" :aria-label="`Hide ${tag.name}`" />
+                    </td>
+                    <td>
+                        <div class="center-both" v-if="tag.editing">
+                            <button type="button" class="icon-button" @click="saveTag(tag)" :aria-label="`Save ${tag.name}`" title="Save">
+                                <span class="material-symbols-outlined" aria-hidden="true">save</span>
+                            </button>
+                            <button type="button" class="icon-button" @click="cancelEdit(tag)" :aria-label="`Cancel editing ${tag.name}`" title="Cancel">
+                                <span class="material-symbols-outlined" aria-hidden="true">cancel</span>
+                            </button>
+                            <button type="button" class="icon-button red" @click="deleteTag(tag)" :aria-label="`Delete ${tag.name}`" title="Delete">
+                                <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+                            </button>
+                        </div>
+                        <button v-else type="button" class="icon-button" @click="editTag(tag)" :aria-label="`Edit ${tag.name}`" title="Edit">
+                            <span class="material-symbols-outlined" aria-hidden="true">edit</span>
+                        </button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
     </div>
 
-    <div class="full-width center-column">
-        <div class="full-width center-row single-row" style="width: fit-content;">
-            <h3>Add a tag:</h3>
-            <input type="text" v-model="newTagName" placeholder="Tag Name" required/>
-            <input type="text" v-model="newTagType" placeholder="Tag Type" required/>
-            <span class="material-symbols-outlined" id="add-item" v-on:click="addTag()">
-                add_circle
-            </span>
+    <form class="add-form" @submit.prevent="addTag()">
+        <h2>Add a tag</h2>
+        <div class="add-fields">
+                <div class="add-field">
+                    <label for="new-tag-name">Name</label>
+                    <input id="new-tag-name" type="text" v-model="newTagName" required />
+                </div>
+                <div class="add-field">
+                    <label for="new-tag-type">Type</label>
+                    <input id="new-tag-type" type="text" v-model="newTagType" required />
+                </div>
+            <button type="submit" class="alt-button add-button">
+                <span class="material-symbols-outlined" aria-hidden="true">add_circle</span>
+                Add tag
+            </button>
         </div>
-    </div>
+    </form>
+    </template>
 </template>
 
 
 <style>
 
-.tags-table {
-    border: 3px solid transparent !important;
-    grid-template-columns: 1fr 1fr 5rem 8rem;
-    cursor: initial !important;
+.add-form {
+    margin-top: 2rem;
 }
 
-.table .table-row * {
-    padding: 0.5rem;
-    min-width: 0;
-    margin: 0 0.5rem;
+.add-form h2 {
+    margin: 0 0 0.5rem 0;
 }
 
-.table .table-row input[type="checkbox"] {
-    width: 1rem;
+.add-fields {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 1rem;
+}
+
+.add-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.add-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 2.75rem;
 }
 
 </style>

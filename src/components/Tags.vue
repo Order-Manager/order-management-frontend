@@ -13,31 +13,22 @@
     import { tagsTypes } from '../utils/definitions'
 
     export default {
+        data() {
+            return {
+                activeType: 'project'
+            }
+        },
         methods: {
-            openTab(type) {
-                const tabs = document.getElementsByClassName('tag-tab')
-                for (let tab of tabs) {
-                    tab.style.display = 'none'
-                }
-                document.getElementById(type).style.display = 'flex'
-
-                const buttons = document.getElementsByClassName('tag-type-button')
-                for (let button of buttons) {
-                    button.classList.remove('alt-button')
-                }
-                document.getElementById(type + '-type-button').classList.add('alt-button')
+            isSelected(tag) {
+                return this.selectedTags.some(selected => selected.id === tag.id)
             },
-            toggleTag(tag, type) {
-                const index = this.selectedTags.indexOf(tag)
-                const button = document.getElementById(type + '-' + tag.id + '-name-button')
+            toggleTag(tag) {
+                const index = this.selectedTags.findIndex(selected => selected.id === tag.id)
                 if (index === -1) {
                     this.selectedTags.push(tag)
-                    button.classList.add('alt-button')
                 } else {
                     this.selectedTags.splice(index, 1)
-                    button.classList.remove('alt-button')
                 }
-
             }
         },
         setup() {
@@ -47,9 +38,6 @@
             return {
                 tags, tagsTypes
             }
-        },
-        mounted() {
-            this.openTab('project');
         },
         props: {
             selectedTags: {
@@ -61,11 +49,30 @@
 </script>
 
 <template>
-    <div id="tags-types-div">
-        <button v-for="type in tagsTypes" :key="type" v-on:click="openTab(type)" class="tag-type-button" :id="type + '-type-button'">{{ type }}</button>
+    <div id="tags-types-div" role="group" aria-label="Tag type">
+        <button
+            v-for="type in tagsTypes"
+            :key="type"
+            type="button"
+            class="tag-type-button"
+            :class="{ 'alt-button': activeType === type }"
+            :aria-pressed="activeType === type"
+            @click="activeType = type"
+        >{{ type }}</button>
     </div>
-    <div v-for="type in tagsTypes" :key="type" :id="type" class="tag-tab">
-        <button v-for="tag in tags.filter(tag => (tag.type === type) && (!tag.hidden))" :key="tag.id" class="tag-button" v-on:click="toggleTag(tag, type)" :id="type + '-' + tag.id + '-name-button'">{{ tag.name }}</button>
+    <div class="tag-tab" role="group" :aria-label="`${activeType} tags`">
+        <button
+            v-for="tag in tags.filter(tag => (tag.type === activeType) && (!tag.hidden))"
+            :key="tag.id"
+            type="button"
+            class="tag-button"
+            :class="{ 'alt-button': isSelected(tag) }"
+            :aria-pressed="isSelected(tag)"
+            @click="toggleTag(tag)"
+        >
+            <span class="material-symbols-outlined tag-check" aria-hidden="true" v-if="isSelected(tag)">check</span>
+            {{ tag.name }}
+        </button>
     </div>
 </template>
 
@@ -73,11 +80,22 @@
 <style>
 
     .tag-tab {
-        display: none;
+        display: flex;
         flex-wrap: wrap;
         justify-content: center;
         padding: 0.5rem 0;
         gap: 0.5rem;
+    }
+
+    .tag-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        min-height: 2.75rem;
+    }
+
+    .tag-check {
+        font-size: 1.1rem;
     }
 
     #tags-types-div {
@@ -86,12 +104,13 @@
         margin-top: 0.5rem;
         width: 100%;
         border-radius: 0.5rem;
-        overflow: hidden;
     }
 
     #tags-types-div > button {
         border-radius: 0;
         width: 100%;
+        min-height: 2.75rem;
+        text-transform: capitalize;
     }
 
     #tags-types-div > button:first-child {

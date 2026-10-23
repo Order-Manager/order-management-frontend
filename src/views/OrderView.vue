@@ -1,7 +1,6 @@
 <script>
 import { computed, ref } from "vue";
 
-import Return from '../components/Return.vue'
 import { useDocument, useFirestore, useCurrentUser, useCollection } from 'vuefire'
 import { doc, updateDoc, collection, arrayUnion } from "firebase/firestore";
 
@@ -14,9 +13,6 @@ import { useToast } from "vue-toastification";
 
 
 export default {
-    components: {
-        Return
-    },
     methods: {
         goToOrder(date) {
             this.$router.push(`/view/${date}`)
@@ -124,8 +120,7 @@ export default {
             const db = useFirestore()
             const orderRef = doc(db, 'orders', this.order_id)
             const currentUser = useCurrentUser()
-            const area = document.getElementById("comment-textarea")
-            const comment = area.value
+            const comment = this.newComment.trim()
 
             // TODO: Add rule checks
             if (comment.length == 0) {
@@ -144,7 +139,7 @@ export default {
                     "message": comment
                 })
             })
-            area.value = ""
+            this.newComment = ""
         },
         showError(message) {
             this.toast.error(message);
@@ -157,6 +152,10 @@ export default {
         },
         showInfo(message) {
             this.toast.info(message);
+        },
+        tagName(id) {
+            const tag = this.tags.find(t => t.id === id);
+            return tag ? tag.name : id;
         },
         isReviewer() {
             return this.userData && this.userData.isIR;
@@ -312,9 +311,18 @@ export default {
     props: {
         order_id: String,
     },
+    watch: {
+        "order.title": {
+            handler(title) {
+                if (title) document.title = `${title} · IFT Orders`;
+            },
+            immediate: true,
+        },
+    },
     data() {
         return {
             editingItems: false, // Toggle for editing items
+            newComment: "",
         };
     },
     setup() {
@@ -344,203 +352,198 @@ export default {
 </script>
 
 <template>
-    <Return />
-
     <div v-if="order">
         <div class="center-column">
             <div id="order-header">
-                <h2>{{ order.title }}</h2>
-                <p>&nbsp;&nbsp;&nbsp;by {{ order.requestedBy }}</p>
+                <h1>{{ order.title }}</h1>
+                <p>Requested by {{ order.requestedBy }}</p>
             </div>
         </div>
-        <div>
-            <div class="full-width center-row order-info">
-                <label>Status:</label><p name="status" :class="statusTypesToColor[order.status] ? statusTypesToColor[order.status] : 'red'">{{ statusTypesToMessage[order.status] ? statusTypesToMessage[order.status] : "Unknown Status" }}</p>
+        <dl id="order-info">
+            <div class="order-info">
+                <dt>Status</dt>
+                <dd :class="statusTypesToColor[order.status] ? statusTypesToColor[order.status] : 'red'">{{ statusTypesToMessage[order.status] ? statusTypesToMessage[order.status] : "Unknown Status" }}</dd>
             </div>
-            <div class="full-width center-row order-info">
-                <label>Last update:</label><p name="last-update">{{ order.lastUpdate.toDate().toLocaleString("en-GB") }}</p>
+            <div class="order-info">
+                <dt>Last update</dt>
+                <dd>{{ order.lastUpdate.toDate().toLocaleString("en-GB") }}</dd>
             </div>
-            <div class="full-width center-row order-info">
-                <label>Priority:</label><p name="priority" :class="priorityToColor[order.priority] ? priorityToColor[order.priority] : 'green'">{{ order.priority ? order.priority.charAt(0).toUpperCase()+ order.priority.slice(1) : "Low" }}</p>
+            <div class="order-info">
+                <dt>Priority</dt>
+                <dd :class="priorityToColor[order.priority] ? priorityToColor[order.priority] : 'green'">{{ order.priority ? order.priority.charAt(0).toUpperCase()+ order.priority.slice(1) : "Low" }}</dd>
             </div>
-            <div class="full-width center-row order-info">
-                <label>Tags:</label>
-                <div name="tags" id="tags-div" >
-                    <p v-for="(tag, index) in order.tags" :key="tag" class="tag">{{ tags.find(t => t.id === tag).name }}<span v-if="index != order.tags.length - 1">, </span></p>
-                </div>
+            <div class="order-info">
+                <dt>Tags</dt>
+                <dd>{{ (order.tags || []).map(tagName).join(", ") }}</dd>
             </div>
-            <div class="full-width center-row order-info">
-                <label>Supplier:</label> <p name="supplier">{{ order.supplier }}</p>
+            <div class="order-info">
+                <dt>Supplier</dt>
+                <dd>{{ order.supplier }}</dd>
             </div>
-            <div class="full-width center-row order-info">
-                <label>Creation date:</label><p name="creation">{{ order.creationDate.toDate().toLocaleString("en-GB") }}</p>
+            <div class="order-info">
+                <dt>Created</dt>
+                <dd>{{ order.creationDate.toDate().toLocaleString("en-GB") }}</dd>
             </div>
-
-        </div>
+        </dl>
 
 
         <div class="center-column full-width">
-            <div class="center-row">
-                <span class="material-symbols-outlined">
-                    shopping_cart
-                </span>
-                <h2>&nbsp;Items: {{ Math.floor(1000 * order.items.reduce((acc, item) => acc + parseFloat(item.price) * parseFloat(item.quantity), 0)) / 1000 }}€</h2>
-            </div>
+            <h2 class="center-row section-title">
+                <span class="material-symbols-outlined" aria-hidden="true">shopping_cart</span>
+                Items: {{ Math.floor(1000 * order.items.reduce((acc, item) => acc + parseFloat(item.price) * parseFloat(item.quantity), 0)) / 1000 }}€
+            </h2>
         </div>
 
-        <div id="items-list" class="full-width">
-            <div class="table">
-                <div class="table-header orderview-table">
-                    <p>Name</p>
-                    <p>Link</p>
-                    <p>Quantity</p>
-                    <p>Unit Price</p>
-                    <p>Total</p>
-                    <p v-if="editingItems">Actions</p>
-                    <p v-else>Status</p>
-                </div>
-                <div
-                    class="table-row orderview-table"
-                    v-for="(item, index) in order.items"
-                    :key="index"
-                >
-                    <template v-if="editingItems">
-                        <input type="text" v-model="item.name" required>
-                        <input type="url" v-model="item.link" :pattern="supplierUrl && supplierUrl ? '^https://(www\.)?' + supplierUrl.split('https://www.').slice(-1)[0].split('https://').slice(-1)[0] + '.*' : ''" required>
-                        <input type="number" v-model="item.quantity" required>
-                        <input type="number" v-model="item.price" min="0.00" max="10000.00" step="0.001" required>
-                        <p>{{ Math.floor(1000 * parseFloat(item.price) * parseFloat(item.quantity)) / 1000 }}€</p>
-                        <div style="justify-content: center; display: flex; flex-direction: row;">
-                            <span class="material-symbols-outlined clickable red" @click="deleteItem(index)" title="Delete item">
-                                delete
-                            </span>
-                            <!-- Copy button -->
-                            <span class="material-symbols-outlined clickable" @click="copyItemToClipboard(item)" title="Copy item">
-                                content_copy
-                            </span>
-                        </div>
-                    </template>
-                    <template v-else>
-                        <p>{{ item.name }}</p>
-                        <p class="item-link"><a :href="item.link" target="_blank">{{ item.link }}</a></p>
-                        <p>{{ item.quantity }}</p>
-                        <p>{{ item.price }}€</p>
-                        <p>{{ Math.floor(1000 * parseFloat(item.price) * parseFloat(item.quantity)) / 1000 }}€</p>
-                        <div style="justify-content: center; display: flex; flex-direction: row;">
-                        <button v-if="isReviewer() && getItemNextStatus(item) != 'none'"
-                            v-on:click="updateItemStatus(index, getItemNextStatus(item), true)" class="alt-button">
-                            Mark as {{ getItemNextStatus(item) }}
-                        </button>
-                        <p v-else class="order-item-status" :class="getItemStatusColor(item)">
-                            {{ getItemStatus(item) }}
-                        </p>
-                        </div>
-                    </template>
-                </div>
-                <div v-if="editingItems" class="full-width center-both  ">
-                    <span class="material-symbols-outlined" id="add-item" v-on:click="addItem()" title="Add item">
-                        add_circle
-                    </span>
-                    <span class="material-symbols-outlined" id="add-item" v-on:click="pasteItemFromClipboard()" title="Paste item">
-                        content_paste
-                    </span>
-                </div>
+        <div id="items-list" class="table-scroll">
+            <table class="data-table orderview-table">
+                <caption class="visually-hidden">Items in this order</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Name</th>
+                        <th scope="col">Link</th>
+                        <th scope="col">Quantity</th>
+                        <th scope="col">Unit price</th>
+                        <th scope="col">Total</th>
+                        <th scope="col" v-if="editingItems">Actions</th>
+                        <th scope="col" v-else>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="(item, index) in order.items" :key="index">
+                        <template v-if="editingItems">
+                            <td><input type="text" v-model="item.name" required :aria-label="`Item ${index + 1} name`"></td>
+                            <td><input type="url" v-model="item.link" required :aria-label="`Item ${index + 1} link`"></td>
+                            <td><input type="number" v-model="item.quantity" required min="1" :aria-label="`Item ${index + 1} quantity`"></td>
+                            <td><input type="number" v-model="item.price" min="0.00" max="10000.00" step="0.001" required :aria-label="`Item ${index + 1} unit price in euros`"></td>
+                            <td>{{ Math.floor(1000 * parseFloat(item.price) * parseFloat(item.quantity)) / 1000 }}€</td>
+                            <td>
+                                <div class="center-both">
+                                    <button type="button" class="icon-button red" @click="deleteItem(index)" :aria-label="`Delete item ${index + 1}`" title="Delete item">
+                                        <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+                                    </button>
+                                    <button type="button" class="icon-button" @click="copyItemToClipboard(item)" :aria-label="`Copy item ${index + 1}`" title="Copy item">
+                                        <span class="material-symbols-outlined" aria-hidden="true">content_copy</span>
+                                    </button>
+                                </div>
+                            </td>
+                        </template>
+                        <template v-else>
+                            <td>{{ item.name }}</td>
+                            <td class="item-link"><a :href="item.link" target="_blank" rel="noopener">{{ item.link }}<span class="visually-hidden"> (opens in a new tab)</span></a></td>
+                            <td>{{ item.quantity }}</td>
+                            <td>{{ item.price }}€</td>
+                            <td>{{ Math.floor(1000 * parseFloat(item.price) * parseFloat(item.quantity)) / 1000 }}€</td>
+                            <td>
+                                <button v-if="isReviewer() && getItemNextStatus(item) != 'none'" type="button"
+                                    v-on:click="updateItemStatus(index, getItemNextStatus(item), true)" class="alt-button">
+                                    Mark as {{ getItemNextStatus(item) }}<span class="visually-hidden">: {{ item.name }}</span>
+                                </button>
+                                <span v-else class="order-item-status" :class="getItemStatusColor(item)">
+                                    {{ getItemStatus(item) }}
+                                </span>
+                            </td>
+                        </template>
+                    </tr>
+                </tbody>
+            </table>
+            <div v-if="editingItems" class="full-width center-both">
+                <button type="button" class="icon-button add-item" v-on:click="addItem()" aria-label="Add item" title="Add item">
+                    <span class="material-symbols-outlined" aria-hidden="true">add_circle</span>
+                </button>
+                <button type="button" class="icon-button add-item" v-on:click="pasteItemFromClipboard()" aria-label="Paste item" title="Paste item">
+                    <span class="material-symbols-outlined" aria-hidden="true">content_paste</span>
+                </button>
             </div>
         </div>
 
         <div id="approval-buttons">
-            <button class="alt-button" v-if="canEdit()" @click="toggleEditItems()">
-                {{ editingItems ? "Save Items" : "Edit Items" }}
+            <button type="button" class="alt-button" v-if="canEdit()" @click="toggleEditItems()">
+                {{ editingItems ? "Save items" : "Edit items" }}
             </button>
 
-            <button class="green"
+            <button type="button" class="green"
                 v-if="isAuthor() && ['draft'].includes(order.status)"
                 v-on:click="publishOrder()">
-                Create Order
+                Create order
             </button>
 
-            <button  class="green"
+            <button type="button" class="green"
                 v-if="isReviewer() && ['pending', 'refused', 'pendingIR', 'refusedIR'].includes(order.status)"
                 v-on:click="approvedByIR(false)">
-                Approve Order
+                Approve order
             </button>
 
             <div v-if="isReviewer() && ['pendingIR', 'refusedIR'].includes(order.status)" class="center-row small-gap">
-                <select v-model="selectedReviewer">
+                <label for="reviewer-select" class="visually-hidden">Reviewer</label>
+                <select id="reviewer-select" v-model="selectedReviewer">
+                    <option value="" disabled>Choose a reviewer</option>
                     <option v-for="reviewer in reviewers.filter(reviewer =>  isReviewRequestAllowed(reviewer.email))" :key="reviewer.id" :value="reviewer.email">{{ reviewer.email }}</option>
                 </select>
-                <button  class="blue"
+                <button type="button" class="blue"
                     v-on:click="requestReview()">
-                    Send Review Request
+                    Send review request
                 </button>
             </div>
 
-            <button
+            <button type="button"
                 v-if="isReviewer() && ['processingOrder'].includes(order.status)"
                 v-on:click="setOrderStatus('ordered')">
                 Mark as ordered
             </button>
 
-            <button
+            <button type="button"
                 v-if="isReviewer() && ['ordered'].includes(order.status)"
                 v-on:click="setOrderStatus('received')">
                 Mark as delivered
             </button>
 
-            <button
+            <button type="button"
                 v-if="isReviewer() && ['received'].includes(order.status)"
                 v-on:click="setOrderStatus('completed')">
                 Mark as completed
             </button>
 
-            <button  class="red"
+            <button type="button" class="red"
                 v-if="isReviewer() && ['pendingIR', 'processingOrder'].includes(order.status)"
                 v-on:click="rejectedByIR()">
-                Reject Order
+                Reject order
             </button>
 
-            <button class="red"
+            <button type="button" class="red"
                 v-if="isAuthor() && ['draft', 'pendingIR'].includes(order.status)"
                 v-on:click="cancelOrder()">
-                Cancel Order
+                Cancel order
             </button>
 
         </div>
 
 
         <div class="center-column full-width">
-            <div class="center-row">
-                <span class="material-symbols-outlined">
-                    history
-                </span>
-                <h2>&nbsp;Updates</h2>
-            </div>
+            <h2 class="center-row section-title">
+                <span class="material-symbols-outlined" aria-hidden="true">history</span>
+                Updates
+            </h2>
         </div>
 
 
         <ul id="updates">
-            <li v-for="update in order.updates" :key="update.date.toDate().toLocaleString('en-GB')" class="update">
+            <li v-for="(update, index) in order.updates" :key="index" class="update">
 
                 <div v-if="update.type == 'comment'" class="update-comment">
-                    <!-- <div class="symbol">
-                        <span class="material-symbols-outlined">{{ updateTypesToIcon[update.type] ?  updateTypesToIcon[update.type] : 'notifications' }}</span>
-                    </div> -->
                     <div class="vline"></div>
                     <div class="update-comment-content">
 
                         <div class="update-header">
-                            <!-- <h3 class="update-title">{{ updateTypesToMessage[update.type] }}&nbsp;</h3> -->
                             <p class="update-title">{{ update.author }}&nbsp;</p>
                             <p class="update-date">commented on the {{ update.date.toDate().toLocaleString('en-GB') }}</p>
                         </div>
                         <p class="update-message">{{ update.message }}</p>
                     </div>
-                    <!-- <hr> -->
                 </div>
                 <div v-else-if="update.type == 'review-requested'" class="update-notification">
                     <div class="vline"></div>
                     <div class="symbol">
-                        <span class="material-symbols-outlined">{{ updateTypesToIcon[update.type] ?  updateTypesToIcon[update.type] : 'notifications' }}</span>
+                        <span class="material-symbols-outlined" aria-hidden="true">{{ updateTypesToIcon[update.type] ?  updateTypesToIcon[update.type] : 'notifications' }}</span>
                     </div>
                     <div class="update-header">
                         <h3 class="update-title" :class="updateTypesToColor[update.type] ? updateTypesToColor[update.type] : 'red'">{{ updateTypesToMessage[update.type] }} to {{ update.message }}&nbsp;</h3>
@@ -552,7 +555,7 @@ export default {
                 <div v-else class="update-notification">
                     <div class="vline"></div>
                     <div class="symbol">
-                        <span class="material-symbols-outlined">{{ updateTypesToIcon[update.type] ?  updateTypesToIcon[update.type] : 'notifications' }}</span>
+                        <span class="material-symbols-outlined" aria-hidden="true">{{ updateTypesToIcon[update.type] ?  updateTypesToIcon[update.type] : 'notifications' }}</span>
                     </div>
                     <div class="update-header">
                         <h3 class="update-title" :class="updateTypesToColor[update.type] ? updateTypesToColor[update.type] : 'red'">{{ updateTypesToMessage[update.type] }}&nbsp;</h3>
@@ -562,23 +565,47 @@ export default {
                 </div>
             </li>
         </ul>
+
+        <form id="comment-div" class="full-width" @submit.prevent="addComment()">
+            <label for="comment-textarea">Add a comment</label>
+            <div class="center-row small-gap">
+                <textarea id="comment-textarea" v-model="newComment" maxlength="1000" class="full-width"></textarea>
+                <button type="submit" class="alt-button send-button">
+                    <span class="material-symbols-outlined" aria-hidden="true">send</span>
+                    Send
+                </button>
+            </div>
+        </form>
     </div>
-    <div id="comment-div" class="full-width center-column">
-        <textarea name="comment-textarea" id="comment-textarea" class="full-width"></textarea>
-        <span class="material-symbols-outlined" v-on:click="addComment()">
-            send
-        </span>
-    </div>
+    <p v-else role="status">Loading order…</p>
 </template>
 
 
 <style>
 
-.order-info label {
-    min-width: 10rem;
+#order-info {
+    margin: 0 0 1rem 0;
 }
-.order-info p {
+
+.order-info {
+    display: flex;
+    gap: 1rem;
+    padding: 0.15rem 0;
+}
+
+.order-info dt {
+    min-width: 10rem;
+    font-size: 1.1rem;
+    color: var(--color-text-secondary);
+}
+
+.order-info dd {
     margin: 0;
+    color: var(--color-text-secondary);
+}
+
+.section-title {
+    gap: 0.5rem;
 }
 
 #order-header {
@@ -591,6 +618,10 @@ export default {
     margin-top: 0;
 }
 
+#order-header p {
+    margin-left: 1rem;
+}
+
 
 @media (max-width: 768px) {
 
@@ -600,8 +631,9 @@ export default {
         align-items: center;
     }
 
-    #order-header h2 {
+    #order-header h1 {
         margin: 1rem 0 0 0;
+        text-align: center;
     }
 
     #order-header p {
@@ -619,17 +651,19 @@ export default {
     gap: 0.5rem;
 }
 
-.orderview-table {
-    border: 3px solid transparent !important;
-    grid-template-columns: 2fr 3fr 6rem 7rem 6rem 13rem;
-    /* grid-template-columns: 2fr 3fr 6rem 7rem 6rem 4rem 5rem 8rem; */
-    cursor: initial !important;
+.orderview-table input[type="number"] {
+    max-width: 8rem;
 }
 
 @media (max-width: 768px) {
     .orderview-table {
-        width: 768px;
+        min-width: 768px;
     }
+}
+
+.add-item {
+    font-size: 2rem;
+    margin: 0.5rem;
 }
 
 .edit-buttons {
@@ -640,13 +674,6 @@ export default {
     justify-content: center;
 }
 
-.material-symbols-outlined.green {
-    color: green;
-}
-
-.material-symbols-outlined.red {
-    color: red;
-}
 
 #pi-review-div {
     display: flex;
@@ -783,26 +810,28 @@ export default {
 
 #comment-div {
     display: flex;
-    flex-direction: row;
-    align-items: flex-end;
+    flex-direction: column;
+    gap: 0.5rem;
     width: 100%;
-    overflow: hidden;
+}
+
+#comment-div > .center-row {
+    align-items: flex-end;
 }
 
 #comment-div textarea {
     width: 100%;
     height: 5rem;
-    border: 1px solid var(--color-text-primary);
+    box-sizing: border-box;
 }
 
-#comment-div textarea:focus {
-    border: var(--border-timeline) solid var(--color-text-primary);
-}
 
-#comment-div span {
-    margin-left: 0.5rem;
-    font-size: 2rem;
-    cursor: pointer;
+
+.send-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 2.75rem;
 }
 
 .item-link a {

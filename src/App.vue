@@ -4,37 +4,32 @@ import Footer from './components/Footer.vue'
 </script>
 
 <template>
-
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-
+  <a class="skip-link" href="#main" @click.prevent="$refs.main.focus()">Skip to content</a>
   <TopBar />
   <div id="page">
-    <div id="main-view">
-      <router-view></router-view>
-    </div>
+    <main id="main" ref="main" tabindex="-1">
+      <!-- Keyed so going from one order to another loads the new one -->
+      <router-view :key="$route.fullPath"></router-view>
+    </main>
     <Footer />
   </div>
 </template>
 
 <style scoped>
 
-/* Padding on active route */
-div.active {
-  padding: 1rem;
-}
-
 #page{
   position: relative;
   min-height: calc(100vh - 4rem);
 }
 
-#main-view {
+#main {
+  display: block;
   padding: 2rem 2rem 6rem 2rem;
   max-width: 100%;
 }
 
 @media (max-width: 1024px) {
-  #main-view {
+  #main {
     padding: 1rem 0.5rem 6rem 0.5rem;
   }
 }

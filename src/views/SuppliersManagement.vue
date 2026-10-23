@@ -1,5 +1,5 @@
 <script>
-import Return from '../components/Return.vue'
+import { computed } from 'vue'
 import { useFirestore, useCurrentUser, useCollection, useDocument } from 'vuefire'
 import {
     collection,
@@ -10,14 +10,10 @@ import {
     orderBy
 } from "firebase/firestore";
 
-import { useRouter } from 'vue-router'
 
 import { useToast } from "vue-toastification";
 
 export default {
-    components: {
-        Return
-    },
     methods: {
         addSupplier() {
             const db = useFirestore()
@@ -93,8 +89,11 @@ export default {
             this.toast.info(message);
         },
     },
-    props: {
-        order_id: String,
+    data() {
+        return {
+            newSupplierName: '',
+            newSupplierWebpage: ''
+        }
     },
     setup() {
         const db = useFirestore()
@@ -107,110 +106,121 @@ export default {
 
         const currentUser = useCurrentUser();
 
-        if (currentUser.value == null) {
-            const router = useRouter()
-            router.push('/')
-            return
-        }
-
-        const userData = useDocument(doc(db, 'admins', currentUser.value.uid));
-        const isAdmin = userData.value != null && userData.value.isIR;
-
-        if (!isAdmin) {
-            const router = useRouter()
-            router.push('/')
-            return
-        }
+        // Rules only let admins write; this decides what to show once the admin record has loaded
+        const userData = useDocument(computed(() => currentUser.value && doc(db, 'admins', currentUser.value.uid)));
+        const isAdmin = computed(() => !!(userData.value && userData.value.isIR));
 
         const toast = useToast();
 
         return {
-            suppliers, toast
+            suppliers, toast, isAdmin, userData
         }
     }
 }
 </script>
 
 <template>
-    <Return />
-
     <div class="center-column">
-        <h2>Suppliers Management</h2>
+        <h1>Suppliers</h1>
     </div>
 
-    <div id="suppliers-list" class="table">
-        <div class="table-header suppliers-table">
-            <p>Name</p>
-            <p>Link</p>
-            <p>Hide</p>
-            <p>Edit</p>
-        </div>
-        <div class="table-row suppliers-table"
-            v-for="supplier in suppliers"
-            :key="supplier.id"
-        >
-            <template v-if="supplier.editing">
-                <input type="text" v-model="supplier.newName" />
-                <input type="url" v-model="supplier.newWebpage" />
-                <div class="center-column center-both">
-                    <input type="checkbox" style="margin: 0.5rem;" v-model="supplier.hidden" v-on:change="changeHidden(supplier)" />
-                </div>
-                <div class="center-row">
-                    <span class="material-symbols-outlined clickable" @click="saveSupplier(supplier)">save</span>
-                    <span class="material-symbols-outlined clickable" @click="cancelEdit(supplier)">cancel</span>
-                    <span class="material-symbols-outlined clickable red" @click="deleteSupplier(supplier)">delete</span>
-                </div>
-            </template>
-            <template v-else>
-                <p>{{ supplier.name }}</p>
-                <a :href="supplier.webpage">{{ supplier.webpage }}</a>
-                <div class="center-column center-both">
-                    <input type="checkbox" v-model="supplier.hidden" v-on:change="changeHidden(supplier)" />
-                </div>
-                <div class="center-column">
-                    <span class="material-symbols-outlined clickable" @click="editSupplier(supplier)">edit</span>
-                </div>
-            </template>
-        </div>
+    <p v-if="!isAdmin" role="status">{{ userData === undefined ? 'Loading…' : 'Only research engineers can manage suppliers.' }}</p>
+
+    <template v-else>
+    <div class="table-scroll">
+        <table class="data-table suppliers-table">
+            <caption class="visually-hidden">Suppliers</caption>
+            <thead>
+                <tr>
+                    <th scope="col">Name</th>
+                    <th scope="col">Website</th>
+                    <th scope="col">Hidden</th>
+                    <th scope="col"><span class="visually-hidden">Actions</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="supplier in suppliers" :key="supplier.id">
+                    <template v-if="supplier.editing">
+                        <td><input type="text" v-model="supplier.newName" :aria-label="`Name of ${supplier.name}`" /></td>
+                        <td><input type="url" v-model="supplier.newWebpage" :aria-label="`Website of ${supplier.name}`" /></td>
+                    </template>
+                    <template v-else>
+                        <td>{{ supplier.name }}</td>
+                        <td><a :href="supplier.webpage" target="_blank" rel="noopener">{{ supplier.webpage }}</a></td>
+                    </template>
+                    <td>
+                        <input type="checkbox" v-model="supplier.hidden" v-on:change="changeHidden(supplier)" :aria-label="`Hide ${supplier.name}`" />
+                    </td>
+                    <td>
+                        <div class="center-both" v-if="supplier.editing">
+                            <button type="button" class="icon-button" @click="saveSupplier(supplier)" :aria-label="`Save ${supplier.name}`" title="Save">
+                                <span class="material-symbols-outlined" aria-hidden="true">save</span>
+                            </button>
+                            <button type="button" class="icon-button" @click="cancelEdit(supplier)" :aria-label="`Cancel editing ${supplier.name}`" title="Cancel">
+                                <span class="material-symbols-outlined" aria-hidden="true">cancel</span>
+                            </button>
+                            <button type="button" class="icon-button red" @click="deleteSupplier(supplier)" :aria-label="`Delete ${supplier.name}`" title="Delete">
+                                <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+                            </button>
+                        </div>
+                        <button v-else type="button" class="icon-button" @click="editSupplier(supplier)" :aria-label="`Edit ${supplier.name}`" title="Edit">
+                            <span class="material-symbols-outlined" aria-hidden="true">edit</span>
+                        </button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
     </div>
 
-    <div class="full-width center-column">
-        <div class="full-width center-row single-row" style="width: fit-content;">
-            <h3>Add a Supplier:</h3>
-            <input type="text" v-model="newSupplierName" placeholder="Supplier Name" required />
-            <input type="url" v-model="newSupplierWebpage" placeholder="Supplier Webpage" required />
-            <span class="material-symbols-outlined" id="add-item" v-on:click="addSupplier()">
-                add_circle
-            </span>
+    <form class="add-form" @submit.prevent="addSupplier()">
+        <h2>Add a supplier</h2>
+        <div class="add-fields">
+                <div class="add-field">
+                    <label for="new-supplier-name">Name</label>
+                    <input id="new-supplier-name" type="text" v-model="newSupplierName" required />
+                </div>
+                <div class="add-field">
+                    <label for="new-supplier-webpage">Website</label>
+                    <input id="new-supplier-webpage" type="url" v-model="newSupplierWebpage" required />
+                </div>
+            <button type="submit" class="alt-button add-button">
+                <span class="material-symbols-outlined" aria-hidden="true">add_circle</span>
+                Add supplier
+            </button>
         </div>
-    </div>
+    </form>
+    </template>
 </template>
 
 
 <style>
 
-.suppliers-table {
-    border: 3px solid transparent !important;
-    grid-template-columns: 1fr 1fr 5rem 8rem;
-    cursor: initial !important;
+.add-form {
+    margin-top: 2rem;
 }
 
-.table .table-row * {
-    padding: 0.5rem;
-    min-width: 0;
-    margin: 0 0.5rem;
+.add-form h2 {
+    margin: 0 0 0.5rem 0;
 }
 
-.table .table-row input[type="checkbox"] {
-    width: 1rem;
+.add-fields {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 1rem;
 }
 
-.material-symbols-outlined.clickable {
-    cursor: pointer;
+.add-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
 }
 
-.material-symbols-outlined.red {
-    color: red;
+.add-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 2.75rem;
 }
 
 </style>

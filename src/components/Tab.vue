@@ -1,39 +1,34 @@
 <script>
 
-import {
-    useCurrentUser
-} from "vuefire";
-
-import { useFirestore, useDocument } from 'vuefire';
+import { useCurrentUser, useFirestore, useDocument } from 'vuefire';
 import { doc } from 'firebase/firestore';
 
-import { ref } from 'vue';
+import { computed } from 'vue';
 
 export default {
-    props: {
-        showTab: Boolean
-    },
+    emits: ['close'],
     setup() {
         const currentUser = useCurrentUser();
         const db = useFirestore();
 
-        const userData = useDocument(doc(db, 'admins', currentUser.value.uid));
-        const isAdmin = userData.value != undefined && userData.value.isIR;
-        const showTab = ref(true);
+        const userData = useDocument(computed(() => currentUser.value && doc(db, 'admins', currentUser.value.uid)));
+        const isAdmin = computed(() => !!(userData.value && userData.value.isIR));
 
         return {
-            isAdmin, showTab
+            isAdmin
         }
     },
     methods: {
-        hideTab() {
-            this.showTab = false;
-            this.$emit('setTabVisibility', this.showTab);
-        },
-        goToPage(page) {
-            this.hideTab()
-            this.$router.push(page)
+        onKeydown(event) {
+            if (event.key === 'Escape') this.$emit('close', true)
         }
+    },
+    mounted() {
+        document.addEventListener('keydown', this.onKeydown)
+        this.$el.querySelector('#side-tab a')?.focus()
+    },
+    unmounted() {
+        document.removeEventListener('keydown', this.onKeydown)
     }
 }
 
@@ -41,13 +36,13 @@ export default {
 
 
 <template>
-    <div v-if="showTab">
-        <div id="page-mask" v-on:click="hideTab"></div>
-        <div id="side-tab">
-            <a v-on:click="goToPage('/')">Orders</a>
-            <a v-on:click="goToPage('/suppliers')" v-if="isAdmin">Suppliers</a>
-            <a v-on:click="goToPage('/tags')" v-if="isAdmin">Tags</a>
-        </div>
+    <div>
+        <div id="page-mask" @click="$emit('close', false)"></div>
+        <nav id="side-tab" aria-label="Sections">
+            <router-link to="/" @click="$emit('close', false)">Orders</router-link>
+            <router-link to="/suppliers" v-if="isAdmin" @click="$emit('close', false)">Suppliers</router-link>
+            <router-link to="/tags" v-if="isAdmin" @click="$emit('close', false)">Tags</router-link>
+        </nav>
     </div>
 </template>
 
@@ -58,6 +53,7 @@ export default {
     position: fixed;
     top: 4rem;
     width: 20rem;
+    max-width: 85vw;
     left: 0;
     height: 100%;
     background-color: var(--color-secondary);
@@ -66,7 +62,7 @@ export default {
 
     display: flex;
     flex-direction: column;
-    align-items: left;
+    align-items: stretch;
 }
 
 #side-tab a {
@@ -75,7 +71,13 @@ export default {
     font-weight: 500;
     margin: 0 3rem 0 1rem;
     text-align: left;
-    cursor: pointer;
+    color: var(--text);
+    text-decoration: none;
+    border-radius: 8px;
+}
+
+#side-tab a:hover, #side-tab a.router-link-exact-active {
+    text-decoration: underline;
 }
 
 

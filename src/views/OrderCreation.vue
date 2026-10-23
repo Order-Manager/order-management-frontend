@@ -1,6 +1,5 @@
 <script>
-    import Return from '../components/Return.vue'
-    import TagComponent from '../components/Tags.vue'
+        import TagComponent from '../components/Tags.vue'
     import {
         ref
     } from 'vue'
@@ -27,20 +26,17 @@
 
     export default {
         components: {
-            Return, TagComponent
+            TagComponent
         },
         methods: {
             async createOrder(email, uid) {
                 try {
                 // 1. Form Data & Validation
-                const title = document.getElementById('title').value;
-                const comment = document.getElementById('comment').value;
-                const priority = document.querySelector('input[name="priority"]:checked').value;
+                const title = this.title.trim();
+                const comment = this.comment;
+                const priority = this.priority;
 
                 const items = [];
-                const itemsList = Array.from(document.getElementById('items-list').children)
-                                        .slice(1)
-                                        .filter(item => item.classList.contains('table-row'));
 
                 if (title.length === 0) {
                     this.showError("Please provide a title for the order.");
@@ -54,13 +50,7 @@
 
                 const supplierUrl = this.selectedSupplier.webpage.split("https://www.").slice(-1)[0].split("https://").slice(-1)[0];
 
-                for (const item of itemsList) {
-                    const link = item.querySelector('input[name="link"]').value;
-                    const type = item.querySelector('select[name="item-type"]').value;
-                    const name = item.querySelector('input[name="name"]').value;
-                    const quantity = item.querySelector('input[name="quantity"]').value;
-                    const price = item.querySelector('input[name="price"]').value;
-
+                for (const { link, type, name, quantity, price } of this.items) {
                     if ((type === 'item' || type === 'cart') && link.length === 0) {
                         this.showError("Please provide a link for all items and carts.");
                         return;
@@ -83,7 +73,7 @@
                         return;
                     }
 
-                    items.push({ type, link, name, quantity, price });
+                    items.push({ type, link, name, quantity: String(quantity), price: String(price) });
                 }
 
                 const status = this.isDraft ? 'draft' : 'pendingIR';
@@ -108,11 +98,6 @@
                 // 3. Success Handling and Redirect
                 // Optionally show a success message
                 this.showSuccess("Order created successfully!");
-
-                // Clear the form (consider using a form reset if available)
-                document.getElementById('title').value = '';
-                document.getElementById('supplier').value = '';
-                document.getElementById('comment').value = '';
 
                 this.$router.push('/');
 
@@ -152,33 +137,6 @@
                 this.items.splice(index, 1);
                 this.showInfo("Item removed.");
             },
-            openTab(type) {
-                const tabs = document.getElementsByClassName('tag-tab')
-                for (let tab of tabs) {
-                    tab.style.display = 'none'
-                }
-                document.getElementById(type).style.display = 'flex'
-
-                const buttons = document.getElementsByClassName('tag-type-button')
-                for (let button of buttons) {
-                    button.classList.remove('alt-button')
-                }
-                document.getElementById(type + '-type-button').classList.add('alt-button')
-            },
-            toggleTag(tag, type) {
-                const index = this.selectedTags.indexOf(tag)
-                const button = document.getElementById(type + '-' + tag.id + '-name-button')
-                if (index === -1) {
-                    this.selectedTags.push(tag)
-                    button.classList.add('alt-button')
-                } else {
-                    this.selectedTags.splice(index, 1)
-                    button.classList.remove('alt-button')
-                }
-            },
-            isStock(idx) {
-                console.log(idx)
-            },
             async pasteItemFromClipboard() {
                 try {
                     const text = await navigator.clipboard.readText();
@@ -211,7 +169,10 @@
                     name: '',
                     webpage: ''
                 },
-                isDraft: false
+                isDraft: false,
+                title: '',
+                comment: '',
+                priority: 'low'
             }
         },
         setup() {
@@ -234,9 +195,6 @@
                 suppliers, user, tags, tagsTypes, selectedTags, toast
             }
         },
-        mounted() {
-            this.openTab('project');
-        },
         watch: {
             suppliers: {
                 immediate: true,
@@ -249,109 +207,120 @@
 </script>
 
 <template>
-    <Return />
-
     <div>
         <div class="center-column">
-            <h2 class="page-title">Create a new order</h2>
+            <h1 class="page-title">New order</h1>
         </div>
-        <div id="order-creation-form" >
-            <p>
-                IF YOU WANT YOUR ORDER TO BE ACCEPTED
+        <form id="order-creation-form" novalidate @submit.prevent="createOrder(user.email, user.uid)">
+            <section id="order-guidelines" aria-labelledby="guidelines-title">
+                <h2 id="guidelines-title">If you want your order to be accepted</h2>
                 <ul>
                     <li>Give a clear title to your order</li>
                     <li>Give a clear name to each item including the options you want e.g. “Acrylic sheet 3x200x300mm”</li>
                     <li>Delivery options - price and date - should be reasonable</li>
                     <li>If you need to order several items, try to find them on the same supplier before placing several orders</li>
                 </ul>
-            </p>
+            </section>
             <div class="order-form-category">
                 <label class="category-label" for="title">Title</label>
-                <input type="text" id="title" name="title" required>
+                <input type="text" id="title" name="title" v-model="title" required>
             </div>
             <div class="order-form-category">
                 <label class="category-label" for="supplier">Supplier</label>
                 <div class="flex center-row" style="gap: 1rem;">
-                    <select id="supplier" name="supplier" v-model="selectedSupplier" required>
-                        <option v-for="supplier in suppliers" :value="supplier" v-bind:key="supplier">{{ supplier.name }}</option>
+                    <select id="supplier" name="supplier" v-model="selectedSupplier" required aria-describedby="supplier-hint">
+                        <option v-for="supplier in suppliers" :value="supplier" v-bind:key="supplier.id">{{ supplier.name }}</option>
                     </select>
-                    <p class="blue" style="margin: 0">The links of the items must start with <a :href="selectedSupplier ? selectedSupplier.webpage : ''">{{ selectedSupplier ? selectedSupplier.webpage : '' }}</a>. If your supplier is not in the list, please contact <a href="mailto:dvic@devinci.fr">dvic@devinci.fr</a>.</p>
+                    <p id="supplier-hint" class="blue" style="margin: 0">The links of the items must start with <a :href="selectedSupplier ? selectedSupplier.webpage : ''">{{ selectedSupplier ? selectedSupplier.webpage : '' }}</a>. If your supplier is not in the list, please contact <a href="mailto:dvic@devinci.fr">dvic@devinci.fr</a>.</p>
                 </div>
             </div>
-            <div class="order-form-category">
-                <label class="category-label">Tags</label>
+            <fieldset class="order-form-category">
+                <legend class="category-label">Tags</legend>
                 <div class="full-width">
-                    <div id="selected-tags">
-                        <span v-for="(tag, index) in selectedTags" :key="tag" class="tag">{{ tag.name }}  <span v-if="index != selectedTags.length - 1">, </span></span>
-                    </div>
+                    <p id="selected-tags" aria-live="polite">
+                        <span class="visually-hidden">Selected tags: </span>
+                        <span v-if="selectedTags.length === 0">None selected</span>
+                        <span v-else>{{ selectedTags.map(tag => tag.name).join(", ") }}</span>
+                    </p>
                     <TagComponent :selectedTags="selectedTags" />
                 </div>
-            </div>
-            <div class="order-form-category">
-                <label class="category-label">Priority level</label>
+            </fieldset>
+            <fieldset class="order-form-category">
+                <legend class="category-label">Priority</legend>
                 <div id="priority-div">
                     <div>
-                        <input type="radio" id="low" name="priority" value="low" checked>
+                        <input type="radio" id="low" name="priority" value="low" v-model="priority">
                         <label for="low">Low</label>
                     </div>
                     <div>
-                        <input type="radio" id="medium" name="priority" value="medium">
+                        <input type="radio" id="medium" name="priority" value="medium" v-model="priority">
                         <label for="medium">Medium</label>
                     </div>
                     <div>
-                        <input type="radio" id="high" name="priority" value="high">
+                        <input type="radio" id="high" name="priority" value="high" v-model="priority">
                         <label for="high">High</label>
                     </div>
                 </div>
-            </div>
-            <div class="order-form-category full-width">
-                <label class="category-label" for="items-list">Items</label>
+            </fieldset>
+            <fieldset class="order-form-category full-width">
+                <legend class="category-label">Items</legend>
 
                 <div class="full-width">
-                    <div id="items-list" class="table full-width">
-                        <div class="table-header items-table">
-                            <p>Type</p>
-                            <p>Name</p>
-                            <p>Link</p>
-                            <p>Quantity</p>
-                            <p>Unit Price (€)</p>
-                        </div>
-
-                        <div v-for="(item, index) in items" :key="index" class="table-row items-table">
-                            <select name="item-type" v-model="item.type">
-                            <option value="item">Item</option>
-                            <option value="cart">Cart</option>
-                            <option value="stock">Stock</option>
-                            </select>
-                            <input type="text" name="name" v-model="item.name" required>
-                            <input type="url" name="link" v-model="item.link" :pattern="selectedSupplier && selectedSupplier.webpage ? '^https://(www\.)?' + selectedSupplier.webpage.split('https://www.').slice(-1)[0].split('https://').slice(-1)[0] + '.*' : ''" required>
-                            <input type="number" name="quantity" v-model="item.quantity" required>
-                            <input type="number" name="price" min="0.000" max="10000.00" step="0.001" v-model="item.price" required/>
-                            <span class="material-symbols-outlined red remove-item" @click="removeItem(index)" title="Remove item">
-                                delete
-                            </span>
-                        </div>
+                    <div id="items-list" class="table-scroll">
+                        <table class="data-table items-table">
+                            <caption class="visually-hidden">Items to order</caption>
+                            <thead>
+                                <tr>
+                                    <th scope="col">Type</th>
+                                    <th scope="col">Name</th>
+                                    <th scope="col">Link</th>
+                                    <th scope="col">Quantity</th>
+                                    <th scope="col">Unit price (€)</th>
+                                    <th scope="col"><span class="visually-hidden">Actions</span></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="(item, index) in items" :key="index">
+                                    <td>
+                                        <select name="item-type" v-model="item.type" :aria-label="`Item ${index + 1} type`">
+                                            <option value="item">Item</option>
+                                            <option value="cart">Cart</option>
+                                            <option value="stock">Stock</option>
+                                        </select>
+                                    </td>
+                                    <td><input type="text" name="name" v-model="item.name" required :aria-label="`Item ${index + 1} name`"></td>
+                                    <td><input type="url" name="link" v-model="item.link" required :aria-label="`Item ${index + 1} link`"></td>
+                                    <td><input type="number" name="quantity" v-model="item.quantity" min="1" required :aria-label="`Item ${index + 1} quantity`"></td>
+                                    <td><input type="number" name="price" min="0.000" max="10000.00" step="0.001" v-model="item.price" required :aria-label="`Item ${index + 1} unit price in euros`"/></td>
+                                    <td>
+                                        <button type="button" class="icon-button red" @click="removeItem(index)" :aria-label="`Remove item ${index + 1}`" title="Remove item">
+                                            <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
 
                     <div class="full-width center-both">
-                        <span class="material-symbols-outlined" id="add-item" v-on:click="addItem()" title="Add item">
-                            add_circle
-                        </span>
-                        <span class="material-symbols-outlined" id="add-item" v-on:click="pasteItemFromClipboard()" title="Paste item">
-                            content_paste
-                        </span>
+                        <button type="button" class="icon-button add-item" v-on:click="addItem()" aria-label="Add item" title="Add item">
+                            <span class="material-symbols-outlined" aria-hidden="true">add_circle</span>
+                        </button>
+                        <button type="button" class="icon-button add-item" v-on:click="pasteItemFromClipboard()" aria-label="Paste item" title="Paste item">
+                            <span class="material-symbols-outlined" aria-hidden="true">content_paste</span>
+                        </button>
                     </div>
                 </div>
-            </div>
+            </fieldset>
             <div class="order-form-category">
                 <label class="category-label" for="comment">Comment</label>
-                <textarea id="comment" name="comment"></textarea>
+                <textarea id="comment" name="comment" v-model="comment"></textarea>
             </div>
             <div class="center-row medium-gap">
-                <button class="alt-button" v-on:click="createOrder(user.email, user.uid)">Create order</button>
-                <button v-on:click="saveAsDraft(user.email, user.uid)">Save as draft</button>
+                <button type="submit" class="alt-button" @click="isDraft = false">Create order</button>
+                <button type="button" v-on:click="saveAsDraft(user.email, user.uid)">Save as draft</button>
             </div>
-        </div>
+        </form>
     </div>
 </template>
 
@@ -363,8 +332,20 @@
     }
 
     .order-form-category {
-        margin-bottom: 2rem;
+        margin: 0 0 2rem 0;
         display: flex;
+    }
+
+    fieldset.order-form-category {
+        border: none;
+        padding: 0;
+        min-width: 0;
+    }
+
+    /* Legends don't take part in flex layout, so float them into the label column */
+    fieldset.order-form-category > legend {
+        float: left;
+        padding: 0;
     }
 
     @media (max-width: 768px) {
@@ -384,22 +365,23 @@
         }
 
         .items-table {
-            width: 768px;
+            min-width: 768px;
         }
     }
 
-    #order-creation-form > p {
+    #order-guidelines {
         background-color: var(--color-primary);
         border: 1px solid var(--red);
         border-radius: 1rem;
-        /* width: fit-content; */
         margin: 1rem auto;
         padding: 1rem;
-        color: var(--red) !important;
+        color: var(--red);
     }
 
-    #order-creation-form > p li {
-        color: var(--red) !important;
+    #order-guidelines h2 {
+        margin: 0;
+        font-size: 1rem;
+        text-transform: uppercase;
     }
 
     #title {
@@ -408,51 +390,15 @@
 
     #selected-tags {
         display: flex;
-        flex-direction: row;
-
         align-items: center;
-
+        margin: 0;
         background-color: var(--color-primary);
         width: calc(100% - 2rem);
-        height: 2rem;
+        min-height: 2rem;
         border-radius: 0.5rem;
         padding: 0.5rem 1rem;
     }
 
-    #selected-tags > span {
-        margin-right: 0.5rem;
-    }
-
-
-    .tag-tab {
-        display: none;
-        padding: 0.5rem 0;
-        gap: 0.5rem;
-    }
-
-    #tags-types-div {
-        display: flex;
-        flex-direction: row;
-        margin-top: 0.5rem;
-        width: 100%;
-        border-radius: 0.5rem;
-        overflow: hidden;
-    }
-
-    #tags-types-div > button {
-        border-radius: 0;
-        width: 100%;
-    }
-
-    #tags-types-div > button:first-child {
-        border-top-left-radius: 0.5rem;
-        border-bottom-left-radius: 0.5rem;
-    }
-
-    #tags-types-div > button:last-child {
-        border-top-right-radius: 0.5rem;
-        border-bottom-right-radius: 0.5rem;
-    }
 
     #priority-div {
         display: flex;
@@ -460,39 +406,24 @@
         gap: 1rem;
     }
 
+    #priority-div > div {
+        display: flex;
+        align-items: center;
+        min-height: 2.75rem;
+    }
+
     #priority-div > div > label {
         padding-left: 0.5rem;
-    }
-
-    .table {
-        width: 100%;
-    }
-
-    .items-table {
-        border: 3px solid transparent !important;
-        grid-template-columns: 7rem 3fr 3fr 6rem 8rem 4rem;
-        cursor: initial !important;
-    }
-
-
-    .remove-item {
         cursor: pointer;
     }
 
-    #add-item {
-        cursor: pointer;
+    .items-table select {
+        min-width: 6.5rem;
+    }
+
+    .add-item {
         font-size: 2rem;
-        margin-top: 1rem;
+        margin: 0.5rem;
     }
-
-    #add-item span {
-        font-size: 2rem;
-    }
-
-    #add-item {
-        width: 3rem;
-        height: 3rem;
-    }
-
 
 </style>

@@ -1,5 +1,6 @@
 import {
-    createApp
+    createApp,
+    nextTick
 } from "vue";
 import {
     createRouter,
@@ -33,45 +34,52 @@ import InventoryView from "./views/InventoryView.vue";
 const routes = [{
         path: "/",
         component: OrdersList,
-        meta: { requiresAuth: true }
+        meta: { title: "Orders", requiresAuth: true }
     },
     {
         path: "/create",
         component: OrderCreation,
-        meta: { requiresAuth: true }
+        meta: { title: "New order", requiresAuth: true }
     },
     {
         path: "/view/:id",
         component: OrderView,
-        meta: { requiresAuth: true }
+        meta: { title: "Order", requiresAuth: true }
     },
     {
         path: "/login",
-        component: Login
+        component: Login,
+        meta: { title: "Sign in" }
     },
     {
         path: "/signout",
-        component: SignOut
+        component: SignOut,
+        meta: { title: "Signing out" }
     },
     {
         path: "/suppliers",
-        component: SuppliersManagement
+        component: SuppliersManagement,
+        meta: { title: "Suppliers" }
     },
     {
         path: "/tags",
-        component: TagsManagement
+        component: TagsManagement,
+        meta: { title: "Tags" }
     },
     {
         path: "/inventory",
-        component: InventoryList
+        component: InventoryList,
+        meta: { title: "Inventory" }
     },
     {
         path: "/inventory/category/:id",
-        component: InventoryCategory
+        component: InventoryCategory,
+        meta: { title: "Inventory category" }
     },
     {
         path: "/inventory/item/:id",
-        component: InventoryView
+        component: InventoryView,
+        meta: { title: "Inventory item" }
     },
 
 ];
@@ -101,6 +109,14 @@ router.beforeEach(async (to) => {
     }
 })
 
+// Name each page in the tab title, and move focus to the new page so screen readers announce it
+router.afterEach((to, from) => {
+    document.title = to.meta.title ? `${to.meta.title} · IFT Orders` : "IFT Orders";
+    if (from.matched.length) {
+        nextTick(() => document.getElementById("main")?.focus({ preventScroll: true }));
+    }
+})
+
 const app = createApp(App);
 app.use(router);
 app.use(VueFire, {
@@ -114,7 +130,7 @@ app.use(VueFire, {
 
 const toastOptions = {
     position: "top-center",
-    timeout: 2000
+    timeout: 5000
 };
 app.use(Toast, toastOptions);
 app.mount("#app");

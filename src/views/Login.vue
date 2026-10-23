@@ -8,52 +8,58 @@
 
     import { getCurrentUser } from "vuefire";
 
-    import { useRouter } from 'vue-router'
+    import { useRoute, useRouter } from 'vue-router'
 
     import { useToast } from "vue-toastification";
 
     export default {
+        data() {
+            return {
+                email: '',
+                message: '',
+                messageIsError: false,
+                sending: false,
+            };
+        },
         methods: {
             signIn() {
                 const auth = getAuth();
                 const actionCodeSettings = {
-                    // url: 'https://ift.devinci.fr/orders/#/login?cartId=1234',
                     url: window.location.href,
                     handleCodeInApp: true,
                 };
-                const email = document.getElementById('email').value;
-                const errorMessage = document.getElementById('error');
-                const successMessage = document.getElementById('success');
-
-                errorMessage.textContent = '';
-                errorMessage.style.display = 'none';
-                successMessage.textContent = '';
-                successMessage.style.display = 'none';
+                const email = this.email.trim();
 
                 // Must match isDevinci() in firestore.rules
                 if(!email.match(/^[^@\s]+@(edu\.)?devinci\.fr$/i)) {
-                    this.toast.error('Please use your @devinci.fr or @edu.devinci.fr address');
+                    this.showMessage('Please use your @devinci.fr or @edu.devinci.fr address.', true);
+                    this.$refs.email.focus();
                     return;
                 }
 
+                this.sending = true;
                 sendSignInLinkToEmail(auth, email, actionCodeSettings)
                     .then(() => {
                         window.localStorage.setItem('emailForSignIn', email);
-                        this.toast.success('A login link has been sent to your email address. Please check your inbox.');
-                        // successMessage.textContent = 'A login link has been sent to your email address. Please check your inbox.';
-                        // successMessage.style.display = 'block';
+                        this.showMessage(`We sent a sign-in link to ${email}. Open it on this device to sign in.`, false);
                     })
                     .catch((error) => {
-                        const errorCode = error.code;
-                        const message = error.message;
-                        console.log('Error', errorCode, message);
-                        this.toast.error('Could not send the login link: ' + message);
+                        console.log('Error', error.code, error.message);
+                        this.showMessage('Could not send the sign-in link: ' + error.message, true);
+                    })
+                    .finally(() => {
+                        this.sending = false;
                     });
+            },
+            showMessage(text, isError) {
+                this.message = text;
+                this.messageIsError = isError;
             }
         },
         setup() {
             const auth = getAuth();
             const router = useRouter();
+            const route = useRoute();
             const toast = useToast();
 
 
@@ -69,16 +75,17 @@
                 signInWithEmailLink(auth, email, window.location.href)
                     .then((result) => {
                         window.localStorage.removeItem('emailForSignIn');
-                        toast.success('You have been signed in successfully');
-                        router.push('/');
+                        toast.success('You are signed in.');
+                        router.push(route.query.redirect || '/');
                     })
                     .catch((error) => {
-                        toast.error('An error occurred while signing inError signing in: ' + error.message);
+                        toast.error('Could not sign you in: ' + error.message);
 
                     });
-            } else if (getCurrentUser(auth)) {
-                const router = useRouter();
-                router.push('/');
+            } else {
+                getCurrentUser().then((user) => {
+                    if (user) router.push(route.query.redirect || '/');
+                });
             }
 
 
@@ -89,56 +96,47 @@
 </script>
 
 <template>
-    <div id="mask"></div>
-    <div class="center-column full-size">
-        <div id="login-content" class="center-column">
-            <input type="email" id="email" placeholder="Email" pattern="[^@\s]+@(edu\.)?devinci\.fr" required />
-            <p id="email-error" class="error-message">Please enter a valid email address</p>
-            <button id="login-button" v-on:click="signIn()">Login</button>
-        </div>
-        <p id="error" class="login-message error-message"></p>
-        <p id="success" class="login-message success-message"></p>
+    <div class="center-column">
+        <form id="login-content" class="center-column" novalidate @submit.prevent="signIn()">
+            <h1>Sign in</h1>
+            <label for="email">Devinci email address</label>
+            <input
+                ref="email"
+                v-model="email"
+                type="email"
+                id="email"
+                name="email"
+                autocomplete="email"
+                placeholder="firstname.lastname@devinci.fr"
+                required
+                :aria-invalid="messageIsError"
+                aria-describedby="login-message"
+            />
+            <button type="submit" class="alt-button" :disabled="sending">{{ sending ? 'Sending…' : 'Send me a sign-in link' }}</button>
+            <p id="login-message" role="status" :class="messageIsError ? 'red' : 'green'">{{ message }}</p>
+        </form>
     </div>
 </template>
 
-<style>
-    #mask {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.5);
-        z-index: 100;
-    }
+<style scoped>
     #login-content {
-        z-index: 101;
-        /* width: 8rem; */
-        height: 6rem;
-        background-color: var(--color-primary);
-        margin-top: calc(min(10rem, 25vh));
+        gap: 0.75rem;
+        width: min(24rem, 100%);
+        box-sizing: border-box;
+        background-color: var(--bg);
+        margin-top: calc(min(6rem, 15vh));
         padding: 2rem;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
         border-radius: 0.5rem;
-    }
-    .login-message {
-        z-index: 101;
-    }
-
-
-    input:invalid {
-        border: 1px solid red;
+        border: 1px solid var(--border-muted);
+        align-items: stretch;
     }
 
-    .error-message {
-        display: none;
-        color: rgb(255, 133, 133);
+    h1 {
+        margin: 0 0 0.5rem 0;
     }
 
-    .success-message {
-        display: none;
-        color: rgb(152, 255, 152);
+    #login-message {
+        margin: 0;
+        min-height: 1.5em;
     }
 </style>

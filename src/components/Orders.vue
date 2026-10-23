@@ -1,48 +1,13 @@
 <script>
-import { useFirestore, useCollection, useCurrentUser } from "vuefire";
-import { collection, query, where, orderBy } from "firebase/firestore";
-
-import { updateTypesToMessage, statusTypesToMessage, statusTypesToColor, completedStatuses } from '../utils/definitions.js'
+import { statusTypesToMessage, statusTypesToColor, completedStatuses } from '../utils/definitions.js'
 
 
 export default {
     methods: {
-        goToOrder(id, event) {
-            if (event.button === 1 || event.ctrlKey || event.metaKey) {
-                window.open(`/#/view/${id}`, '_blank');
-            } else {
-                this.$router.push(`/view/${id}`);
-            }
-        },
-        sortByCreationDate() {
-            const db = useFirestore();
-            const currentUser = useCurrentUser();
-
-            if (this.sortedByCreationDate) return;
-            this.orders = useCollection(
-                query(
-                // you can pass a query into useCollection
-                collection(db, "orders"), // go to the sessions collection
-                where("requestedBy", "==", currentUser.value.email), // only get the ones that belong to the user.
-                orderBy("creationDate", "desc") // order by creation date descending
-                )
-            );
-            this.sortedByCreationDate = true;
-        },
-        sortByLastUpdate() {
-            const db = useFirestore();
-            const currentUser = useCurrentUser();
-
-            if (!this.sortedByCreationDate) return;
-            this.orders = useCollection(
-                query(
-                // you can pass a query into useCollection
-                collection(db, "orders"), // go to the sessions collection
-                where("requestedBy", "==", currentUser.value.email), // only get the ones that belong to the user.
-                orderBy("lastUpdate", "desc") // order by creation date descending
-                )
-            );
-            this.sortedByCreationDate = false;
+        // Clicking anywhere on a row opens the order; the title link handles keyboard, middle-click and new tabs
+        openFromRow(id, event) {
+            if (event.target.closest('a')) return;
+            this.$router.push(`/view/${id}`);
         },
     },
     setup() {
@@ -51,7 +16,6 @@ export default {
             completedStatuses,
             statusTypesToMessage,
             statusTypesToColor,
-            updateTypesToMessage
         }
     },
     props: {
@@ -63,34 +27,36 @@ export default {
 </script>
 
 <template>
-    <div class="table" id="orders">
-        <div class="table-header orderlist-table">
-            <p>Status</p>
-            <p>Title</p>
-            <p>Requested by</p>
-            <p v-on:click="sortByLastUpdate()">Last Update</p>
-            <p v-on:click="sortByCreationDate()">Creation Date</p>
-            <p>Supplier</p>
-        </div>
-        <div
-            class="table-row orderlist-table"
-            v-on:click="goToOrder(order.id, $event)"
-            v-on:auxclick="goToOrder(order.id, $event)"
-            v-on:contextmenu.prevent
-            v-on:keyup.enter="goToOrder(order.id, $event)"
-            target="_blank"
-            v-show="!completedStatuses.includes(order.status) || showCompleted"
-            v-for="order in orders"
-            :key="order.creationDate.toDate().toLocaleString('en-GB')"
-            tabindex="0"
-        >
-            <p :class="statusTypesToColor[order.status] ? statusTypesToColor[order.status] : 'red'">{{ statusTypesToMessage[order.status] ? statusTypesToMessage[order.status] : "Unknown Status" }}</p>
-            <p>{{ order.title }}</p>
-            <p>{{ order.requestedBy }}</p>
-            <p>{{ order.lastUpdate.toDate().toLocaleString("en-GB") }}</p>
-            <p>{{ order.creationDate.toDate().toLocaleString("en-GB") }}</p>
-            <p>{{ order.supplier }}</p>
-        </div>
+    <div class="table-scroll" id="orders">
+        <table class="data-table orderlist-table">
+            <caption class="visually-hidden">Orders, newest first</caption>
+            <thead>
+                <tr>
+                    <th scope="col">Status</th>
+                    <th scope="col">Title</th>
+                    <th scope="col">Requested by</th>
+                    <th scope="col">Last update</th>
+                    <th scope="col">Created</th>
+                    <th scope="col">Supplier</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr
+                    class="link-row"
+                    v-for="order in orders"
+                    v-show="!completedStatuses.includes(order.status) || showCompleted"
+                    :key="order.id"
+                    @click="openFromRow(order.id, $event)"
+                >
+                    <td :class="statusTypesToColor[order.status] ? statusTypesToColor[order.status] : 'red'">{{ statusTypesToMessage[order.status] ? statusTypesToMessage[order.status] : "Unknown Status" }}</td>
+                    <td><router-link :to="`/view/${order.id}`">{{ order.title }}</router-link></td>
+                    <td>{{ order.requestedBy }}</td>
+                    <td>{{ order.lastUpdate.toDate().toLocaleString("en-GB") }}</td>
+                    <td>{{ order.creationDate.toDate().toLocaleString("en-GB") }}</td>
+                    <td>{{ order.supplier }}</td>
+                </tr>
+            </tbody>
+        </table>
     </div>
 </template>
 
@@ -99,7 +65,7 @@ export default {
 
 @media (max-width: 768px) {
     .orderlist-table {
-        width: 768px;
+        min-width: 768px;
     }
 }
 </style>

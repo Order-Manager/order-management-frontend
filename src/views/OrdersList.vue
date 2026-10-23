@@ -8,13 +8,9 @@ import Orders from "../components/Orders.vue";
 
 import { statusTypesToMessage, statusTypesToColor, completedStatuses } from '../utils/definitions.js'
 
-import Multiselect from 'vue-multiselect'
 
 export default {
   methods: {
-    createNewOrder() {
-      this.$router.push("/create");
-    },
     // loadMoreOrders() {
     //   if (this.orders.length === this.limitVal) {
     //     this.limitVal += 15;
@@ -54,6 +50,11 @@ export default {
 
     watch(() => userData.value, () => selectedStatuses.value = getInitialStatuses(), { immediate: false });
 
+    const selectedStatusTitles = computed({
+      get: () => selectedStatuses.value.map(status => status.title),
+      set: (titles) => selectedStatuses.value = statuses.value.filter(status => titles.includes(status.title)),
+    });
+
     const statuses = ref([
       { title: "completed", desc: "Order Completed" },
       { title: "received", desc: "Waiting for Pick Up" },
@@ -71,13 +72,13 @@ export default {
         if (userData.value && userData.value.isIR) {
           return query(
             collection(db, "orders"),
-            where("status", "in", selectedStatuses.value.map(status => status.title)),
+            where("status", "in", selectedStatusTitles.value.length ? selectedStatusTitles.value : ["none"]),
             orderBy(sortBy.value, "desc"),
             limit(limitVal.value)
           );
         } else {
           // Add draft status to the query
-          const statusesToInclude = selectedStatuses.value.map(status => status.title);
+          const statusesToInclude = selectedStatusTitles.value.length ? selectedStatusTitles.value : ["none"];
           return query(
             collection(db, "orders"),
             where("requestedBy", "==", currentUser.value.email),
@@ -109,7 +110,6 @@ export default {
           statusTypesToMessage[order.status].toLowerCase().includes(query)
         );
       });
-      console.log(filteredOrders);
       if (filteredOrders.length  == 0) {
         loadMoreOrders();
       }
@@ -119,53 +119,49 @@ export default {
     return {
       userData, completedStatuses, showCompleted, orders, sortedByCreationDate,
       statusTypesToMessage, statusTypesToColor, searchQuery, filteredOrders,
-      selectedStatuses, statuses, sortBy, limitVal, loadMoreOrders
+      selectedStatuses, selectedStatusTitles, statuses, sortBy, limitVal, loadMoreOrders
     };
   },
   components: {
     Orders,
-    Multiselect,
   },
 };
 </script>
 
 <template>
+  <h1 class="visually-hidden">Orders</h1>
   <div id="top-controls" class="medium-gap">
-    <button class="alt-button" id="new-order" v-on:click="createNewOrder()">
-      New order
-    </button>
+    <router-link class="button-link" id="new-order" to="/create">New order</router-link>
 
-    <input id="orders-search-filter" type="text" v-model="searchQuery" placeholder="Search orders..." />
+    <label for="orders-search-filter" class="visually-hidden">Search orders</label>
+    <input id="orders-search-filter" type="search" v-model="searchQuery" placeholder="Search orders..." />
 
-    <div id="orders-status-filter">
-      <multiselect v-model="selectedStatuses"  :options="statuses" :multiple="true" label="desc"
-        track-by="title" :close-on-select="false" :clear-on-select="false" select-label="Click to select" deselect-label="Click to deselect" placeholder="Select statuses">
+    <details id="orders-status-filter">
+      <summary>Status: {{ selectedStatuses.length }} selected</summary>
+      <fieldset>
+        <legend class="visually-hidden">Show orders with these statuses</legend>
+        <label v-for="status in statuses" :key="status.title" class="status-option">
+          <input type="checkbox" :value="status.title" v-model="selectedStatusTitles" />
+          <span :class="statusTypesToColor[status.title]">{{ status.desc }}</span>
+        </label>
+      </fieldset>
+    </details>
 
-        <template #option="props">
-          <span :class="statusTypesToColor[props.option.title]">{{ props.option.desc }}</span>
-        </template>
-        <template #selection="{ isOpen }">
-          <span class="multiselect__single"
-              v-if="selectedStatuses.length"
-              v-show="!isOpen">Order status: {{ selectedStatuses.length }} selected</span>
-        </template>
-      </multiselect>
-    </div>
-
+    <label for="orders-sort" class="visually-hidden">Sort by</label>
     <select id="orders-sort" v-model="sortBy">
-      <option value="creationDate">Creation Date</option>
-      <option value="lastUpdate">Last Update</option>
+      <option value="creationDate">Sort by creation date</option>
+      <option value="lastUpdate">Sort by last update</option>
     </select>
   </div>
   <div id="orders-list">
     <Orders :orders="filteredOrders" :showCompleted="showCompleted" />
+    <p v-if="orders.length === 0" role="status">No orders with these statuses.</p>
     <button v-if="orders.length === limitVal" @click="loadMoreOrders" class="alt-button">
-      View More
+      View more
     </button>
   </div>
 </template>
 
-<style src="vue-multiselect/dist/vue-multiselect.min.css"></style>
 
 <style>
 
@@ -215,66 +211,47 @@ export default {
 }
 
 
-.multiselect {
-  background-color: var(--bg-light);
-  border-radius: 8px;
-  border-color: var(--border);
-  box-shadow: 0px var(--s-shade) var(--s-shade) hsl(0, 0%, 0%, 0.15), 0px var(--b-shade) var(--b-shade) hsl(0, 0%, 0%, 0.3);
-
-  /* box-shadow: 0px var(--s-shade) var(--s-shade) #00000030, 0px var(--b-shade) var(--b-shade) #00000015; */
+#orders-status-filter {
+  position: relative;
+  flex-grow: 1;
+  min-width: 16rem;
 }
 
-.multiselect__tags {
-  background-color: var(--bg-light);
+#orders-status-filter summary {
+  display: flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0 1rem;
+  box-sizing: border-box;
   border-radius: 8px;
-  border-color: var(--border);
-}
-
-.multiselect__tags:hover, .multiselect__tags:focus {
-  border-color: var(--border-hover);
+  border: 1px solid var(--border);
+  background-color: var(--bg-light);
+  color: var(--text-muted);
   cursor: pointer;
 }
 
-.multiselect__tags > input {
-  background-color: var(--bg-light);
-  font-size: 1rem;
-}
-
-.multiselect__single {
-  font-size: 1rem;
-  background-color: var(--bg-light);
-}
-
-.multiselect__option {
-  background-color: var(--color-primary) !important;
-}
-
-/* Set background of selected to black */
-.multiselect__option--selected {
-  background-color: var(--color-tertiary) !important;
-}
-/* Set placeholder text size */
-.multiselect__placeholder {
-  font-size: 1rem;
-}
-
-.multiselect__option {
-  font-size:1rem;
-}
-
-/* .multiselect__option--highlight {
-  background-color: var(--color-secondary) !important;
-} */
-
-.multiselect__tag {
-  background-color: var(--color-secondary) !important;
-  color: var(--color-text-primary) !important;
+#orders-status-filter fieldset {
+  position: absolute;
+  z-index: 50;
+  left: 0;
+  right: 0;
+  margin: 0.25rem 0 0 0;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
   border-radius: 8px;
-  padding: 0.2rem 0.5rem;
+  border: 1px solid var(--border);
+  background-color: var(--bg-light);
 }
 
-.multiselect__tag-icon {
-  color: var(--color-text-primary) !important;
+.status-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 2.75rem;
+  padding: 0 0.5rem;
+  font-size: 1rem;
+  cursor: pointer;
 }
 
 /* p, p {

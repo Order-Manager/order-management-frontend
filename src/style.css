@@ -1,36 +1,40 @@
 @import url('https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap');
 
 
+/* Dark theme (default). Every colour pair used for text passes WCAG AA (4.5:1). */
 :root {
   font-family: Ubuntu, sans-serif;
   line-height: 1.5;
-  font-weight: 400;
+  font-weight: 500;
 
-  font-synthesis: none;  font-weight: 500;
-
+  font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  --bg-dark: oklch(0.1 0 179);
-  --bg: oklch(0.15 0 179);
-  --bg-light: oklch(0.2 0 179);
+  color-scheme: dark;
+
+  --bg-dark: oklch(0.21 0 179);
+  --bg: oklch(0.25 0 179);
+  --bg-light: oklch(0.29 0 179);
   --text: oklch(0.96 0 179);
-  --text-muted: oklch(0.76 0 179);
+  --text-muted: oklch(0.82 0 179);
   --highlight: oklch(0.5 0 179);
-  --border: oklch(0.4 0 179);
-  --border-muted: oklch(0.3 0 179);
+  --border: oklch(0.58 0 179);
+  --border-muted: oklch(0.36 0 179);
   --border-hover: var(--text);
 
-  --red: #d16968;
-  --blue: #6993d7;
+  --red: #e07a78;
+  --blue: #7ea4e3;
   --green: #55b27c;
   --orange: #dcaf62;
-  --grey: #878787;
+  --grey: #a3a3a3;
 
+  /* IFT teal, lightened for text on dark backgrounds */
+  --link: #2aa8a8;
+  --focus: #2aa8a8;
 
   --color-text-primary: var(--text);
-  /* --color-text-primary: #007f7f; */
   --color-text-secondary: var(--text-muted);
   --color-primary: var(--bg-dark);
   --color-secondary: var(--bg);
@@ -38,66 +42,65 @@
   --gradient: linear-gradient(0deg, var(--bg), var(--bg-light));
 
   --primary: #007f7f;
-  --secondary: oklch(0.76 0.1 351);
-  --danger: oklch(0.7 0.05 30);
-  --warning: oklch(0.7 0.05 100);
-  --success: oklch(0.7 0.05 160);
-  --info: oklch(0.7 0.05 260);
 
   --s-shade: 1px;
   --b-shade: 2px;
 
-
   --border-timeline: 2px;
-
 
   color: var(--text);
   background-color: var(--bg-dark);
 }
 
-body.light {
+/* Light theme: follows the system unless the user picked dark, or picked light explicitly */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+
+    --bg-dark: oklch(0.92 0 171);
+    --bg: oklch(0.96 0 171);
+    --bg-light: oklch(1 0 171);
+    --text: oklch(0.15 0 171);
+    --text-muted: oklch(0.4 0 171);
+    --highlight: oklch(1 0 171);
+    --border: oklch(0.6 0 171);
+    --border-muted: oklch(0.85 0 171);
+
+    --red: #a82a27;
+    --blue: #345995;
+    --green: #25683f;
+    --orange: #865400;
+    --grey: #5e5e5e;
+
+    --link: #006464;
+    --focus: #006464;
+  }
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+
   --bg-dark: oklch(0.92 0 171);
   --bg: oklch(0.96 0 171);
   --bg-light: oklch(1 0 171);
   --text: oklch(0.15 0 171);
   --text-muted: oklch(0.4 0 171);
   --highlight: oklch(1 0 171);
-  --border: var(--bg);
-  --border-muted: var(--bg);
-  --border-hover: var(--text);
+  --border: oklch(0.6 0 171);
+  --border-muted: oklch(0.85 0 171);
 
-  --red: #bf302d;
+  --red: #a82a27;
   --blue: #345995;
-  --green: #328052;
-  --orange: #b6893c;
-  --grey: #878787;
+  --green: #25683f;
+  --orange: #865400;
+  --grey: #5e5e5e;
 
-
-  --color-text-primary: var(--text);
-  --color-text-secondary: var(--text-muted);
-  --color-primary: var(--bg-dark);
-  --color-secondary: var(--bg);
-  --color-tertiary: var(--bg-light);
-  --gradient: linear-gradient(0deg, var(--bg), var(--bg-light));
-
-  color: var(--text);
-  background-color: var(--bg-dark);
+  --link: #006464;
+  --focus: #006464;
 }
 
 html {
-  font-size: 14px;
-}
-
-a {
-  font-weight: 500;
-  color: #007f7f;
-  text-decoration: inherit;
-}
-
-p {
-  font-size:1rem;
-  line-height: 1.5;
-  color: var(--color-text-secondary);
+  font-size: 100%;
 }
 
 body {
@@ -109,15 +112,41 @@ body {
   background-color: var(--bg-dark);
 }
 
+a {
+  font-weight: 500;
+  color: var(--link);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+p {
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
 h1 {
-  font-size: 3.2rem;
-  line-height: 1.1;
+  font-size: 1.75rem;
+  line-height: 1.2;
+}
+
+h2 {
+  font-size: 1.35rem;
+  line-height: 1.25;
 }
 
 
-.alt-button {
-  color: var(--text);
+/* Focus: visible ring for keyboard users on everything */
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
 }
+
+/* Programmatic focus on page change; the ring would only be noise there */
+main:focus {
+  outline: none;
+}
+
 
 input, select, button, textarea {
   border-radius: 8px;
@@ -133,25 +162,21 @@ input, select, button, textarea {
   box-shadow: 0px var(--s-shade) var(--s-shade) hsl(0, 0%, 0%, 0.15), 0px var(--b-shade) var(--b-shade) hsl(0, 0%, 0%, 0.3);
 }
 
+.alt-button {
+  color: var(--text);
+}
+
 button:hover, select:hover, textarea:hover {
   cursor: pointer;
   border-color: var(--border-hover);
-}
-
-.clickable {
-  cursor: pointer;
 }
 
 input:hover {
   cursor: text;
 }
 
-button:active, input:active, select:active, textarea:active {
-  border-color: var(--color-text-primary);
-}
-
-button:focus, input:focus, select:focus, textarea:focus {
-  outline: none;
+button:active, input:active, select:active, textarea:active,
+input:focus, select:focus, textarea:focus {
   border-color: var(--color-text-primary);
 }
 
@@ -159,70 +184,93 @@ button:focus, input:focus, select:focus, textarea:focus {
   border-color: var(--border-hover);
 }
 
+.clickable {
+  cursor: pointer;
+}
+
 label {
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   font-weight: 500;
   color: var(--color-text-secondary);
 }
 
-input[type="radio"]::after {
-  content: "";
-  cursor: pointer;
-  display: block;
-  width: 12px;
-  height: 12px;
-  top: 20%;
-  left: -1px;
-  position: relative;
-  border-radius: 20%;
-  background-color: var(--bg);
-  border: 2px solid var(--border);
-
-  transition: background-color 0.25s;
-}
-
-input[type="radio"]::after:hover {
-  opacity: 0.5;
-}
-
-input[type="radio"]:checked::after {
-  background-color: var(--text);
-}
-
-input[type="checkbox"] {
-  width: 0;
-  height: 24px;
+input[type="checkbox"], input[type="radio"] {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  padding: 0;
   box-shadow: none;
-  border: none;
-  background-color: transparent;
-  display: hidden;
-}
-
-input[type="checkbox"]::after {
-  content: "";
+  accent-color: var(--link);
   cursor: pointer;
-  display: block;
-  width: 12px;
-  height: 12px;
-  top: 20%;
-  left: -1px;
-  position: relative;
-  border-radius: 20%;
-  background-color: var(--bg);
-  border: 2px solid var(--border);
-
-  transition: background-color 0.25s;
-
+  vertical-align: middle;
 }
 
-input[type="checkbox"]::after:hover {
-  opacity: 0.5;
+/* Links that look like buttons (navigation, not actions) */
+.button-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0 1rem;
+  box-sizing: border-box;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background-color: var(--bg-light);
+  color: var(--text);
+  text-decoration: none;
 }
 
-input[type="checkbox"]:checked::after {
-  background-color: var(--text);
+.button-link:hover {
+  border-color: var(--border-hover);
 }
 
+/* Icon-only buttons: the icon is decorative, the button carries an aria-label */
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0.25rem;
+  border: 1px solid transparent;
+  background: none;
+  box-shadow: none;
+  color: var(--text);
+}
+
+.icon-button:hover {
+  border-color: var(--border);
+}
+
+.icon-button.red {
+  color: var(--red) !important;
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  left: 1rem;
+  top: -3rem;
+  z-index: 200;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  background: var(--bg-light);
+  color: var(--text);
+}
+
+.skip-link:focus {
+  top: 0.5rem;
+}
 
 
 .full-width {
@@ -274,6 +322,12 @@ input[type="checkbox"]:checked::after {
   gap: 2em;
 }
 
+.single-row {
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
+}
+
 .red {
   color: var(--red) !important;
 }
@@ -294,47 +348,72 @@ input[type="checkbox"]:checked::after {
   color: var(--grey) !important;
 }
 
-table {
+
+/* Data tables (real <table> elements) */
+.table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 0.5rem;
+  box-shadow: 0px var(--s-shade) var(--s-shade) hsl(0, 0%, 0%, 0.15), 0px var(--b-shade) var(--b-shade) hsl(0, 0%, 0%, 0.3);
+  border: 1px solid var(--border-muted);
+  border-top: 1px solid var(--highlight);
+  background: var(--gradient);
+}
+
+.data-table {
+  width: 100%;
   border-collapse: collapse;
-  border: 0;
 }
 
-th {
-  background-color: var(--bg-light);
-  color: var(--color-text-primary);
-  padding: 0.5rem 1rem;
+.data-table caption {
+  text-align: left;
 }
 
-th:first-child {
-  border-top-left-radius: 0.5rem;
-}
-
-th:last-child {
-  border-top-right-radius: 0.5rem;
-}
-
-td {
-  padding: 0.5rem 1rem;
-  /* border-bottom: 1px solid var(--color-secondary); */
-  margin: 1px;
+.data-table th, .data-table td {
+  padding: 0.75rem 0.5rem;
   text-align: center;
+  vertical-align: middle;
+  word-break: break-word;
+}
+
+.data-table th {
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+
+.data-table td {
   color: var(--color-text-secondary);
 }
 
-tr {
+.data-table tbody tr {
+  border-top: 1px solid var(--border-muted);
+}
+
+/* Rows whose main cell holds a link: the whole row reacts, the link does the navigation */
+.data-table tr.link-row {
   cursor: pointer;
-  background-color: var(--bg-light);
-  border: 3px solid transparent;
-  border-radius: 0.5rem;
 }
 
-tr:hover {
-  background-color: var(--bg) !important;
-  /* border-color: var(--color-text-primary); */
+.data-table tr.link-row:hover, .data-table tr.link-row:focus-within {
+  background-color: var(--bg);
+}
+
+.data-table tr.link-row a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.data-table tr.link-row:hover a {
+  text-decoration: underline;
+}
+
+.data-table input, .data-table select {
+  width: 100%;
+  box-sizing: border-box;
 }
 
 
-
+/* Grid "tables" still used by the inventory pages */
 .table {
   border-collapse: collapse;
   border-radius: 0.5rem;
@@ -374,7 +453,6 @@ tr:hover {
   word-break: break-word;
 }
 
-
 .table-row {
   display: grid;
   width: calc(100% - 6px);
@@ -390,75 +468,8 @@ tr:hover {
   }
 }
 
-.table-row:hover, .table-row:focus, .table-row:active {
+.table-row:hover, .table-row:focus-within {
   border: 3px solid var(--primary);
-  outline: none;
   border-radius: 0.5rem;
   cursor: pointer;
-}
-
-/* The switch - the box around the slider */
-.switch {
-  position: relative;
-  display: inline-block;
-  width: 60px;
-  height: 30px;
-}
-
-/* Hide default HTML checkbox */
-.switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: var(--bg-light);
-  -webkit-transition: 0.4s;
-  transition: 0.4s;
-  border: 1px solid var(--border);
-}
-
-.slider:before {
-  position: absolute;
-  content: "";
-  height: 21px;
-  width: 21px;
-  left: 4px;
-  bottom: 4px;
-  background-color: var(--text-muted);
-  -webkit-transition: 0.4s;
-  transition: 0.4s;
-}
-
-input:focus+.slider {
-  box-shadow: 0 0 1px var(--color-text-primary);
-}
-
-input:checked+.slider:before {
-  -webkit-transform: translateX(30px);
-  -ms-transform: translateX(30px);
-  transform: translateX(30px);
-}
-
-/* Rounded sliders */
-.slider.round {
-  border-radius: 30px;
-}
-
-.slider.round:before {
-  border-radius: 50%;
-}
-
-.single-row {
-  display: flex;
-  flex-direction: row;
-  gap: 1rem;
 }

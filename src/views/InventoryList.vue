@@ -68,8 +68,10 @@ export default {
 
     <!-- Search bar -->
     <div class="search-bar">
+      <label for="inventory-search" class="visually-hidden">Search items</label>
       <input
-        type="text"
+        id="inventory-search"
+        type="search"
         v-model="searchQuery"
         placeholder="Search items..."
       />
@@ -80,7 +82,7 @@ export default {
       <h2>All Items</h2>
       <div class="items-list">
         <div v-for="item in filteredAllItems" :key="item.id" class="item-card">
-          <img :src="item.image" alt="Item Image" />
+          <img :src="item.image" :alt="item.name" />
           <h3>{{ item.name }}</h3>
           <p>{{ item.description }}</p>
           <p>Price: €{{ item.price }}</p>
@@ -90,20 +92,20 @@ export default {
 
     <!-- Categories -->
     <div class="categories">
-      <div
+      <router-link
         v-for="category in categories"
         :key="category.id"
         class="category-card"
-        @click="goToCategory(category.id)"
+        :to="`/inventory/category/${category.id}`"
       >
         <img
           v-if="category.items && category.items.length"
           :src="category.items[0]?.image || ''"
-          alt="Category Image"
+          alt=""
         />
         <h2>{{ category.name }}</h2>
         <p>{{ category.description }}</p>
-      </div>
+      </router-link>
     </div>
   </div>
 </template>
@@ -132,7 +134,10 @@ export default {
 }
 
 .category-card {
-  border: 1px solid #ccc;
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 1rem;
   width: 100%;
