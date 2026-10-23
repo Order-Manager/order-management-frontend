@@ -206,18 +206,6 @@ export default {
   font-size: var(--font-lg);
 }
 
-.group-count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 1.5rem;
-  padding: 0 var(--space-2);
-  border-radius: 999px;
-  background-color: var(--bg-light);
-  color: var(--text-muted);
-  font-size: var(--font-sm);
-}
-
 .empty-state {
   display: flex;
   flex-direction: column;

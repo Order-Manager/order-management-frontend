@@ -13,26 +13,103 @@ import { useToast } from "vue-toastification";
 
 import StatusBadge from '../components/StatusBadge.vue'
 import RelativeTime from '../components/RelativeTime.vue'
+import OrderProgress from '../components/OrderProgress.vue'
+import { formatEuros, orderTotal } from '../utils/dates.js'
 
 
 export default {
     components: {
-        StatusBadge, RelativeTime
+        StatusBadge, RelativeTime, OrderProgress
     },
     methods: {
         goToOrder(date) {
             this.$router.push(`/view/${date}`)
         },
-        cancelOrder() {
+        async confirmCancel() {
             const db = useFirestore()
             const orderRef = doc(db, 'orders', this.order_id)
-            updateDoc(orderRef, {
-                "status": "cancelled",
-                "cancelledBy": this.currentUser.email
-            })
-
-            this.showSuccess("Order cancelled!")
+            this.busy = true
+            try {
+                await updateDoc(orderRef, {
+                    "status": "cancelled",
+                    "cancelledBy": this.currentUser.email
+                })
+                this.$refs.cancelDialog.close()
+                this.showSuccess("Order cancelled.")
+            } catch (error) {
+                this.showError("Could not cancel the order: " + error.message)
+            } finally {
+                this.busy = false
+            }
         },
+        openRejectDialog() {
+            this.rejectReason = ""
+            this.rejectError = ""
+            this.$refs.rejectDialog.showModal()
+        },
+        // The reason goes in as a comment first, so the student gets it by email,
+        // then the status changes in a separate write (one combined write would lose the comment)
+        async confirmReject() {
+            const reason = this.rejectReason.trim()
+            if (!reason) {
+                this.rejectError = "Please give a reason: the student will receive it by email."
+                this.$refs.rejectReason.focus()
+                return
+            }
+            const db = useFirestore()
+            const orderRef = doc(db, 'orders', this.order_id)
+            this.busy = true
+            try {
+                await updateDoc(orderRef, {
+                    "updates": arrayUnion({
+                        "type": "comment",
+                        "date": new Date(),
+                        "author": this.currentUser.email,
+                        "message": reason
+                    })
+                })
+                await updateDoc(orderRef, {
+                    "status": "refusedIR",
+                    "reviewIR": false,
+                    "reviewIRBy": this.currentUser.email,
+                })
+                this.$refs.rejectDialog.close()
+                this.showSuccess(`Order rejected. ${this.order.requestedBy} will get your reason by email.`)
+            } catch (error) {
+                this.showError("Could not reject the order: " + error.message)
+            } finally {
+                this.busy = false
+            }
+        },
+        nextStep() {
+            const order = this.order
+            const admin = this.isReviewer()
+            switch (order.status) {
+                case 'draft':
+                    return this.isAuthor() ? "This is a draft. Submit it when it's ready for review." : "Draft: not submitted yet."
+                case 'pendingIR':
+                    return admin ? "Review this order: approve it, reject it, or ask another research engineer." : "Waiting for a research engineer to review it."
+                case 'approvedIR':
+                case 'processingOrder':
+                    return admin ? `Approved. Order it from ${order.supplier}, then mark it as ordered.` : `Approved. A research engineer will order it from ${order.supplier}.`
+                case 'ordered':
+                    return admin ? "Mark the items as delivered when they arrive." : `Ordered from ${order.supplier}. You'll get an email when it arrives.`
+                case 'received':
+                    return admin ? "Waiting for pick-up. Mark it as completed once it's collected." : "It has arrived: you can pick it up."
+                case 'completed':
+                    return "Picked up. This order is closed."
+                case 'refusedIR':
+                    return "Rejected. See the comments below for the reason."
+                case 'cancelled':
+                    return `Cancelled${order.cancelledBy ? ' by ' + order.cancelledBy : ''}.`
+                default:
+                    return ""
+            }
+        },
+        isEnded() {
+            return ['refusedIR', 'cancelled'].includes(this.order.status)
+        },
+        formatEuros, orderTotal,
         publishOrder() {
             const db = useFirestore()
             const orderRef = doc(db, 'orders', this.order_id)
@@ -98,17 +175,6 @@ export default {
             const diffTime = Math.abs(currentDate - requestDate);
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
             return diffDays > 2; // 2 days expiration
-        },
-        rejectedByIR() {
-            const db = useFirestore()
-            const orderRef = doc(db, 'orders', this.order_id)
-            const currentUser = useCurrentUser()
-
-            updateDoc(orderRef, {
-                "status": "refusedIR",
-                "reviewIR": false,
-                "reviewIRBy": currentUser.value.email,
-            })
         },
         setOrderStatus(status) {
             const db = useFirestore()
@@ -198,7 +264,6 @@ export default {
                 "ignoreItemsModification": true,
             });
 
-            this.showSuccess(`Item status updated!`);
         },
         toggleEditItems() {
             if (this.editingItems) {
@@ -329,6 +394,9 @@ export default {
         return {
             editingItems: false, // Toggle for editing items
             newComment: "",
+            rejectReason: "",
+            rejectError: "",
+            busy: false,
         };
     },
     setup() {
@@ -359,46 +427,47 @@ export default {
 
 <template>
     <div v-if="order">
-        <div class="center-column">
-            <div id="order-header">
-                <h1>{{ order.title }}</h1>
-                <p>Requested by {{ order.requestedBy }}</p>
+        <section class="order-summary" aria-labelledby="order-title">
+            <div class="summary-top">
+                <div>
+                    <h1 id="order-title">{{ order.title }}</h1>
+                    <p class="summary-meta">Requested by {{ order.requestedBy }} · <RelativeTime :value="order.creationDate" /></p>
+                </div>
+                <StatusBadge :status="order.status" />
             </div>
-        </div>
-        <dl id="order-info">
-            <div class="order-info">
-                <dt>Status</dt>
-                <dd><StatusBadge :status="order.status" /></dd>
-            </div>
-            <div class="order-info">
-                <dt>Last update</dt>
-                <dd><RelativeTime :value="order.lastUpdate" /></dd>
-            </div>
-            <div class="order-info">
-                <dt>Priority</dt>
-                <dd :class="priorityToColor[order.priority] ? priorityToColor[order.priority] : 'green'">{{ order.priority ? order.priority.charAt(0).toUpperCase()+ order.priority.slice(1) : "Low" }}</dd>
-            </div>
-            <div class="order-info">
-                <dt>Tags</dt>
-                <dd>{{ (order.tags || []).map(tagName).join(", ") }}</dd>
-            </div>
-            <div class="order-info">
-                <dt>Supplier</dt>
-                <dd>{{ order.supplier }}</dd>
-            </div>
-            <div class="order-info">
-                <dt>Created</dt>
-                <dd><RelativeTime :value="order.creationDate" /></dd>
-            </div>
-        </dl>
+            <OrderProgress v-if="!isEnded()" :status="order.status" />
+            <p class="next-step" :class="{ ended: isEnded() }">
+                <span class="material-symbols-outlined" aria-hidden="true">{{ isEnded() ? 'info' : 'arrow_forward' }}</span>
+                {{ nextStep() }}
+            </p>
+            <dl class="summary-facts">
+                <div>
+                    <dt>Supplier</dt>
+                    <dd>{{ order.supplier }}</dd>
+                </div>
+                <div>
+                    <dt>Total</dt>
+                    <dd>{{ formatEuros(orderTotal(order.items)) }}</dd>
+                </div>
+                <div>
+                    <dt>Priority</dt>
+                    <dd :class="priorityToColor[order.priority] ? priorityToColor[order.priority] : 'green'">{{ order.priority ? order.priority.charAt(0).toUpperCase()+ order.priority.slice(1) : "Low" }}</dd>
+                </div>
+                <div>
+                    <dt>Tags</dt>
+                    <dd>{{ (order.tags || []).map(tagName).join(", ") || "None" }}</dd>
+                </div>
+                <div>
+                    <dt>Last update</dt>
+                    <dd><RelativeTime :value="order.lastUpdate" /></dd>
+                </div>
+            </dl>
+        </section>
 
-
-        <div class="center-column full-width">
-            <h2 class="center-row section-title">
-                <span class="material-symbols-outlined" aria-hidden="true">shopping_cart</span>
-                Items: {{ Math.floor(1000 * order.items.reduce((acc, item) => acc + parseFloat(item.price) * parseFloat(item.quantity), 0)) / 1000 }}€
-            </h2>
-        </div>
+        <h2 class="section-title">
+            <span class="material-symbols-outlined" aria-hidden="true">shopping_cart</span>
+            Items <span class="group-count">{{ order.items.length }}</span>
+        </h2>
 
         <div id="items-list" class="table-scroll">
             <table class="data-table orderview-table">
@@ -421,7 +490,7 @@ export default {
                             <td class="col-link" data-label="Link"><input type="url" v-model="item.link" required :aria-label="`Item ${index + 1} link`"></td>
                             <td class="col-qty" data-label="Quantity"><input type="number" inputmode="numeric" v-model="item.quantity" required min="1" :aria-label="`Item ${index + 1} quantity`"></td>
                             <td class="col-price" data-label="Unit price (€)"><input type="number" inputmode="decimal" v-model="item.price" min="0.00" max="10000.00" step="0.001" required :aria-label="`Item ${index + 1} unit price in euros`"></td>
-                            <td class="col-total" data-label="Total">{{ Math.floor(1000 * parseFloat(item.price) * parseFloat(item.quantity)) / 1000 }}€</td>
+                            <td class="col-total" data-label="Total">{{ formatEuros(orderTotal([item])) }}</td>
                             <td class="col-actions">
                                 <div class="center-both">
                                     <button type="button" class="icon-button red" @click="deleteItem(index)" :aria-label="`Delete item ${index + 1}`" title="Delete item">
@@ -437,8 +506,8 @@ export default {
                             <td class="col-name">{{ item.name }}</td>
                             <td class="col-link item-link"><a :href="item.link" target="_blank" rel="noopener">{{ item.link }}<span class="visually-hidden"> (opens in a new tab)</span></a></td>
                             <td class="col-qty" data-label="Quantity">{{ item.quantity }}</td>
-                            <td class="col-price" data-label="Unit price">{{ item.price }}€</td>
-                            <td class="col-total" data-label="Total">{{ Math.floor(1000 * parseFloat(item.price) * parseFloat(item.quantity)) / 1000 }}€</td>
+                            <td class="col-price" data-label="Unit price">{{ formatEuros(parseFloat(item.price)) }}</td>
+                            <td class="col-total" data-label="Total">{{ formatEuros(orderTotal([item])) }}</td>
                             <td class="col-actions">
                                 <button v-if="isReviewer() && getItemNextStatus(item) != 'none'" type="button"
                                     v-on:click="updateItemStatus(index, getItemNextStatus(item), true)" class="mark-item">
@@ -511,25 +580,23 @@ export default {
 
             <button type="button" class="danger"
                 v-if="isReviewer() && ['pendingIR', 'processingOrder'].includes(order.status)"
-                v-on:click="rejectedByIR()">
+                v-on:click="openRejectDialog()">
                 Reject order
             </button>
 
             <button type="button" class="danger"
                 v-if="isAuthor() && ['draft', 'pendingIR'].includes(order.status)"
-                v-on:click="cancelOrder()">
+                v-on:click="$refs.cancelDialog.showModal()">
                 Cancel order
             </button>
 
         </div>
 
 
-        <div class="center-column full-width">
-            <h2 class="center-row section-title">
-                <span class="material-symbols-outlined" aria-hidden="true">history</span>
-                Updates
-            </h2>
-        </div>
+        <h2 class="section-title">
+            <span class="material-symbols-outlined" aria-hidden="true">history</span>
+            History
+        </h2>
 
 
         <ul id="updates">
@@ -582,6 +649,40 @@ export default {
                 </button>
             </div>
         </form>
+
+        <dialog ref="rejectDialog" class="dialog" aria-labelledby="reject-title">
+            <form @submit.prevent="confirmReject()" novalidate>
+                <h2 id="reject-title">Reject this order?</h2>
+                <p>{{ order.requestedBy }} will receive your reason by email.</p>
+                <label for="reject-reason">Reason</label>
+                <textarea
+                    id="reject-reason"
+                    ref="rejectReason"
+                    v-model="rejectReason"
+                    rows="4"
+                    maxlength="1000"
+                    required
+                    :aria-invalid="!!rejectError"
+                    aria-describedby="reject-error"
+                ></textarea>
+                <p id="reject-error" class="field-error" role="alert">{{ rejectError }}</p>
+                <div class="dialog-actions">
+                    <button type="button" @click="$refs.rejectDialog.close()">Keep reviewing</button>
+                    <button type="submit" class="danger" :disabled="busy">Reject order</button>
+                </div>
+            </form>
+        </dialog>
+
+        <dialog ref="cancelDialog" class="dialog" aria-labelledby="cancel-title">
+            <form @submit.prevent="confirmCancel()">
+                <h2 id="cancel-title">Cancel this order?</h2>
+                <p>It will no longer be reviewed or ordered. You can't undo this.</p>
+                <div class="dialog-actions">
+                    <button type="button" @click="$refs.cancelDialog.close()">Keep order</button>
+                    <button type="submit" class="danger" :disabled="busy">Cancel order</button>
+                </div>
+            </form>
+        </dialog>
     </div>
     <p v-else role="status">Loading order…</p>
 </template>
@@ -589,61 +690,83 @@ export default {
 
 <style>
 
-#order-info {
-    margin: 0 0 1rem 0;
-}
-
-.order-info {
+.order-summary {
     display: flex;
-    gap: 1rem;
-    padding: 0.15rem 0;
+    flex-direction: column;
+    gap: var(--space-5);
+    padding: var(--space-5);
+    margin-bottom: var(--space-6);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-muted);
+    background-color: var(--bg);
 }
 
-.order-info dt {
-    min-width: 10rem;
-    font-size: 1.1rem;
-    color: var(--color-text-secondary);
+.summary-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--space-4);
 }
 
-.order-info dd {
+.summary-top h1 {
     margin: 0;
-    color: var(--color-text-secondary);
+}
+
+.summary-meta {
+    margin: var(--space-1) 0 0 0;
+}
+
+.next-step {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    margin: 0;
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius);
+    background-color: var(--bg-light);
+    color: var(--text);
+}
+
+.next-step .material-symbols-outlined {
+    color: var(--link);
+}
+
+.next-step.ended .material-symbols-outlined {
+    color: var(--text-muted);
+}
+
+.summary-facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+    gap: var(--space-4);
+    margin: 0;
+}
+
+.summary-facts dt {
+    font-size: var(--font-sm);
+    color: var(--text-muted);
+}
+
+.summary-facts dd {
+    margin: 0;
+    color: var(--text);
+    overflow-wrap: anywhere;
 }
 
 .section-title {
-    gap: 0.5rem;
-}
-
-#order-header {
     display: flex;
-    flex-direction: row;
-    align-items: baseline;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--font-lg);
 }
 
-#order-header * {
-    margin-top: 0;
-}
+@media (max-width: 47.99rem) {
+    .order-summary {
+        padding: var(--space-4);
+    }
 
-#order-header p {
-    margin-left: 1rem;
-}
-
-
-@media (max-width: 768px) {
-
-    #order-header {
-        display: flex;
+    .summary-top {
         flex-direction: column;
-        align-items: center;
-    }
-
-    #order-header h1 {
-        margin: 1rem 0 0 0;
-        text-align: center;
-    }
-
-    #order-header p {
-        margin: 0 0 1rem 0;
     }
 }
 
@@ -716,10 +839,6 @@ export default {
 
     .orderview-table .col-actions .center-both {
         justify-content: flex-start;
-    }
-
-    .order-info dt {
-        min-width: 7rem;
     }
 }
 

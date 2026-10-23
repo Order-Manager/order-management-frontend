@@ -329,6 +329,72 @@ button:disabled {
   font-size: 1.1em;
 }
 
+/* Small counter next to a heading */
+.group-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  padding: 0 var(--space-2);
+  border-radius: 999px;
+  background-color: var(--bg-light);
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+  font-weight: 500;
+}
+
+/* Inline validation message under a field (empty until there is an error) */
+.field-error {
+  margin: var(--space-1) 0 0 0;
+  color: var(--red);
+  font-size: var(--font-sm);
+}
+
+.field-error:empty {
+  display: none;
+}
+
+[aria-invalid="true"] {
+  border-color: var(--red);
+}
+
+/* Native modal dialogs */
+.dialog {
+  width: min(32rem, calc(100% - 2rem));
+  box-sizing: border-box;
+  padding: var(--space-5);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background-color: var(--bg);
+  color: var(--text);
+}
+
+.dialog::backdrop {
+  background-color: rgba(0, 0, 0, 0.6);
+}
+
+.dialog h2 {
+  margin: 0 0 var(--space-2) 0;
+}
+
+.dialog label {
+  display: block;
+  margin: var(--space-4) 0 var(--space-1) 0;
+}
+
+.dialog textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+}
+
 /* Links that look like buttons (navigation, not actions) */
 .button-link {
   display: inline-flex;
