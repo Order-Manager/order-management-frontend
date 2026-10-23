@@ -9,7 +9,6 @@ import "./style.css";
 import App from "./App.vue";
 
 import OrdersList from "./views/OrdersList.vue";
-import OrdersListAdmin from "./views/OrdersListAdmin.vue";
 import OrderCreation from "./views/OrderCreation.vue";
 import OrderView from "./views/OrderView.vue";
 import Login from "./views/Login.vue";
@@ -27,15 +26,13 @@ import {
 } from 'vuefire'
 import Toast from "vue-toastification";
 import "vue-toastification/dist/index.css";
+import InventoryList from "./views/InventoryList.vue";
+import InventoryCategory from "./views/InventoryCategory.vue";
+import InventoryView from "./views/InventoryView.vue";
 
 const routes = [{
         path: "/",
         component: OrdersList,
-        meta: { requiresAuth: true }
-    },
-    {
-        path: "/all",
-        component: OrdersListAdmin,
         meta: { requiresAuth: true }
     },
     {
@@ -64,6 +61,19 @@ const routes = [{
         path: "/tags",
         component: TagsManagement
     },
+    {
+        path: "/inventory",
+        component: InventoryList
+    },
+    {
+        path: "/inventory/category/:id",
+        component: InventoryCategory
+    },
+    {
+        path: "/inventory/item/:id",
+        component: InventoryView
+    },
+
 ];
 
 const router = createRouter({

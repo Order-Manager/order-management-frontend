@@ -16,10 +16,10 @@ const firebaseConfig = {
     apiKey: "AIzaSyCaP18xs7g2cYP-w0sao7H5tsVd8RCO8k4",
     authDomain: "orders-server.firebaseapp.com",
     projectId: "orders-server",
-    storageBucket: "orders-server.appspot.com",
+    storageBucket: "orders-server.firebasestorage.app",
     messagingSenderId: "7023564218",
     appId: "1:7023564218:web:f4a01b1bca7e02105af983",
-    measurementId: "G-T0WPZQ5CW0",
+    measurementId: "G-T0WPZQ5CW0"
 };
 
 

@@ -2,7 +2,7 @@
 from firebase_functions import firestore_fn, https_fn
 
 # The Firebase Admin SDK to access Cloud Firestore.
-from firebase_admin import initialize_app, firestore
+from firebase_admin import initialize_app, firestore, messaging
 import datetime
 import google.cloud.firestore
 
@@ -42,7 +42,6 @@ def addUpdatesOnCreation(event: firestore_fn.Event[firestore_fn.DocumentSnapshot
     event.data.reference.update({"updates": updates})
 
 
-# Update lastUpdate field on order update
 @firestore_fn.on_document_updated(document="orders/{orderId}")
 def updateLastUpdate(event: firestore_fn.Event[firestore_fn.DocumentSnapshot | None]) -> None:
     """"""
@@ -59,7 +58,7 @@ def updateLastUpdate(event: firestore_fn.Event[firestore_fn.DocumentSnapshot | N
         update = {
             "type": "order-items-updated",
             "date": datetime.datetime.now(),
-            "author": after.get("requestedBy")
+            "author": after.get("lastItemsUpdateBy")
         }
 
         current_updates.append(update)
@@ -69,10 +68,44 @@ def updateLastUpdate(event: firestore_fn.Event[firestore_fn.DocumentSnapshot | N
             "lastUpdate": datetime.datetime.now()
         })
 
+
+    if before.get("updates") != after.get("updates"):
+        last_update = after.get("updates")[-1]
+        if last_update.get("type") == "comment":
+            if last_update.get("author") != after.get("requestedBy") and last_update.get("message") != "" and last_update.get("message") is not None and last_update.get("author") is not None:
+                sendEmail(
+                    to=after.get("requestedBy"),
+                    subject="New comment on your order",
+                    message=f"New comment from {last_update.get('author')}: {last_update.get('message')}"
+                )
+
+
+    if before.get("lastReviewRequestDate") != after.get("lastReviewRequestDate"):
+        current_updates = before.get("updates")
+
+        update = {
+            "type": "review-requested",
+            "date": datetime.datetime.now(),
+            "author": after.get("lastReviewRequestBy"),
+            "message": after.get("lastReviewRequestTo")
+        }
+
+        current_updates.append(update)
+
+        event.data.after.reference.update({
+            "updates": current_updates,
+            "lastUpdate": datetime.datetime.now()
+        })
+
+        sendEmail(
+            to=after.get("lastReviewRequestTo"),
+            subject="New order review request",
+            message=f"You have been requested to review the order '{after.get('title')}' by {after.get('lastReviewRequestBy')}. Please check it out <a href='https://ift.devinci.fr/orders/#/view/{event.data.after.id}'>here</a>."
+        )
+
     if before.get("status") != after.get("status"):
 
         current_updates = before.get("updates")
-
         if after.get("status") == "cancelled":
 
             update = {
@@ -98,27 +131,19 @@ def updateLastUpdate(event: firestore_fn.Event[firestore_fn.DocumentSnapshot | N
 
             current_updates.append(update)
 
-            if after.get("requiresReviewPI"):
-                status = "pendingPI"
+            status = "processingOrder"
 
-                update = {
-                    "type": "review-pi-requested",
-                    "date": datetime.datetime.now(),
-                    "author": after.get("reviewIRBy")
-                }
-
-                current_updates.append(update)
-
-            else:
-                status = "processingOrder"
-
+            sendEmail(
+                to=after.get("requestedBy"),
+                subject="Your order has been approved",
+                message=f"Your order '{after.get('title')}' has been approved by {after.get('reviewIRBy')}. It will be processed shortly."
+            )
 
             event.data.after.reference.update({
                 "status": status,
                 "updates": current_updates,
                 "lastUpdate": datetime.datetime.now()
             })
-
 
         elif after.get("status") == "refusedIR":
 
@@ -130,42 +155,16 @@ def updateLastUpdate(event: firestore_fn.Event[firestore_fn.DocumentSnapshot | N
 
             current_updates.append(update)
 
-            event.data.after.reference.update({
-                "updates": current_updates,
-                "lastUpdate": datetime.datetime.now()
-            })
-
-        elif after.get("status") == "approvedPI":
-
-            update = {
-                "type": "review-pi-approved",
-                "date": datetime.datetime.now(),
-                "author": after.get("reviewPIBy")
-            }
-
-            current_updates.append(update)
-
-            event.data.after.reference.update({
-                "status": "processingOrder",
-                "updates": current_updates,
-                "lastUpdate": datetime.datetime.now()
-            })
-
-
-        elif after.get("status") == "refusedPI":
-            update = {
-                "type": "review-pi-refused",
-                "date": datetime.datetime.now(),
-                "author": after.get("reviewPIBy")
-            }
-
-            current_updates.append(update)
+            sendEmail(
+                to=after.get("requestedBy"),
+                subject="Your order has been rejected",
+                message=f"Your order '{after.get('title')}' has been rejected by {after.get('reviewIRBy')}. Please contact the Research Engineer for more information."
+            )
 
             event.data.after.reference.update({
                 "updates": current_updates,
                 "lastUpdate": datetime.datetime.now()
             })
-
 
         elif after.get("status") == "ordered":
 
@@ -176,6 +175,12 @@ def updateLastUpdate(event: firestore_fn.Event[firestore_fn.DocumentSnapshot | N
             }
 
             current_updates.append(update)
+
+            sendEmail(
+                to=after.get("requestedBy"),
+                subject="Your items have been ordered",
+                message=f"Your order '{after.get('title')}' has been processed by {after.get('orderedBy')}. You will be notified when it is ready for pickup."
+            )
 
             event.data.after.reference.update({
                 "updates": current_updates,
@@ -191,6 +196,12 @@ def updateLastUpdate(event: firestore_fn.Event[firestore_fn.DocumentSnapshot | N
             }
 
             current_updates.append(update)
+
+            sendEmail(
+                to=after.get("requestedBy"),
+                subject="Your order has been received",
+                message=f"Your order '{after.get('title')}' has been received by {after.get('receivedBy')}. Please pick it up at your convenience."
+            )
 
             event.data.after.reference.update({
                 "updates": current_updates,
@@ -212,6 +223,13 @@ def updateLastUpdate(event: firestore_fn.Event[firestore_fn.DocumentSnapshot | N
                 "lastUpdate": datetime.datetime.now()
             })
 
+            sendEmail(
+                to=after.get("requestedBy"),
+                subject="Your order has been canceled",
+                message=f"Your order '{after.get('title')}' has been canceled by {after.get('canceledBy')}."
+            )
+
+
         elif after.get("status") == "completed":
 
             update = {
@@ -227,5 +245,30 @@ def updateLastUpdate(event: firestore_fn.Event[firestore_fn.DocumentSnapshot | N
                 "lastUpdate": datetime.datetime.now()
             })
 
+            sendEmail(
+                to=after.get("requestedBy"),
+                subject="Your order has been completed",
+                message=f"Your order '{after.get('title')}' has been completed by {after.get('completedBy')}."
+            )
+
     if event.data.before.get("lastUpdate") == event.data.after.get("lastUpdate"):
         event.data.after.reference.update({"lastUpdate": datetime.datetime.now()})
+
+
+# Helper function to send emails using the Firebase Trigger Email extension
+def sendEmail(to: str, subject: str, message: str) -> None:
+    if not to or not subject or not message:
+        return
+    try:
+        db = firestore.client()
+
+        email_ref = db.collection("mail").document()
+        email_ref.set({
+            "to": [to],
+            "message": {
+                "subject": "[ift-orders] " + subject,
+                "html": message
+            }
+        })
+    except Exception as e:
+        print(f"Failed to send email: {e}")

@@ -18,7 +18,7 @@ export default {
         const db = useFirestore();
 
         const userData = useDocument(doc(db, 'admins', currentUser.value.uid));
-        const isAdmin = userData.value != undefined && (userData.value.isPI || userData.value.isIR);
+        const isAdmin = userData.value != undefined && userData.value.isIR;
         const showTab = ref(true);
 
         return {

@@ -8,7 +8,7 @@ export default {
 
 <template>
     <footer>
-        <p>IFT © 2024</p>
+        <p>IFT © {{(new Date(Date.now())).getFullYear()}}</p>
     </footer>
 </template>
 

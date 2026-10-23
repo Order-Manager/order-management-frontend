@@ -1,14 +1,18 @@
-
 <script>
+import { useFirestore, useCollection, useCurrentUser } from "vuefire";
+import { collection, query, where, orderBy } from "firebase/firestore";
 
 import { updateTypesToMessage, statusTypesToMessage, statusTypesToColor, completedStatuses } from '../utils/definitions.js'
 
 
 export default {
     methods: {
-        goToOrder(id) {
-            console.log(this.orders);
-            this.$router.push(`/view/${id}`);
+        goToOrder(id, event) {
+            if (event.button === 1 || event.ctrlKey || event.metaKey) {
+                window.open(`/#/view/${id}`, '_blank');
+            } else {
+                this.$router.push(`/view/${id}`);
+            }
         },
         sortByCreationDate() {
             const db = useFirestore();
@@ -51,7 +55,8 @@ export default {
         }
     },
     props: {
-        orders: Object, showCompleted: Boolean
+        orders: Array,
+        showCompleted: Boolean
     }
 }
 
@@ -69,8 +74,11 @@ export default {
         </div>
         <div
             class="table-row orderlist-table"
-            v-on:click="goToOrder(order.id)"
-            v-on:keyup.enter="goToOrder(order.id)"
+            v-on:click="goToOrder(order.id, $event)"
+            v-on:auxclick="goToOrder(order.id, $event)"
+            v-on:contextmenu.prevent
+            v-on:keyup.enter="goToOrder(order.id, $event)"
+            target="_blank"
             v-show="!completedStatuses.includes(order.status) || showCompleted"
             v-for="order in orders"
             :key="order.creationDate.toDate().toLocaleString('en-GB')"

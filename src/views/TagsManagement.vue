@@ -9,7 +9,8 @@ import {
     doc,
     query,
     where,
-    orderBy
+    orderBy,
+    deleteDoc
 } from 'firebase/firestore'
 
 import {useRouter} from 'vue-router'
@@ -67,6 +68,35 @@ export default {
         showInfo(message) {
             this.toast.info(message);
         },
+        editTag(tag) {
+            tag.editing = true;
+            tag.newName = tag.name;
+            tag.newType = tag.type;
+        },
+        saveTag(tag) {
+            const db = useFirestore()
+            const tagRef = doc(db, 'tags', tag.id)
+            updateDoc(tagRef, {
+                name: tag.newName,
+                type: tag.newType
+            })
+
+            tag.name = tag.newName;
+            tag.type = tag.newType;
+            tag.editing = false;
+
+            this.showSuccess(`Tag updated: ${tag.name} (${tag.type})`)
+        },
+        cancelEdit(tag) {
+            tag.editing = false;
+        },
+        deleteTag(tag) {
+            const db = useFirestore()
+            const tagRef = doc(db, 'tags', tag.id)
+            deleteDoc(tagRef)
+
+            this.showSuccess(`Tag deleted: ${tag.name} (${tag.type})`)
+        },
     },
     data() {
         return {
@@ -95,7 +125,7 @@ export default {
         }
 
         const userData = useDocument(doc(db, 'admins', currentUser.value.uid));
-        const isAdmin = userData.value != null && (userData.value.isPI || userData.value.isIR);
+        const isAdmin = userData.value != null && userData.value.isIR;
 
         if(!isAdmin) {
             const router = useRouter()
@@ -124,16 +154,34 @@ export default {
             <p>Name</p>
             <p>Type</p>
             <p>Hide</p>
+            <p>Edit</p>
         </div>
         <div class="table-row tags-table"
             v-for="tag in tags"
             :key="tag.id"
         >
-            <p>{{ tag.name }}</p>
-            <p>{{ tag.type }}</p>
-            <div class="center-column" >
-                <input type="checkbox" v-model="tag.hidden" v-on:change="changeHidden(tag)"/>
-            </div>
+            <template v-if="tag.editing">
+                <input type="text" v-model="tag.newName" />
+                <input type="text" v-model="tag.newType" />
+                <div class="center-column center-both">
+                    <input type="checkbox" style="margin: 0.5rem;" v-model="tag.hidden" v-on:change="changeHidden(tag)" />
+                </div>
+                <div class="center-row">
+                    <span class="material-symbols-outlined clickable" @click="saveTag(tag)">save</span>
+                    <span class="material-symbols-outlined clickable" @click="cancelEdit(tag)">cancel</span>
+                    <span class="material-symbols-outlined clickable red" @click="deleteTag(tag)">delete</span>
+                </div>
+            </template>
+            <template v-else>
+                <p>{{ tag.name }}</p>
+                <p>{{ tag.type }}</p>
+                <div class="center-column center-both">
+                    <input type="checkbox" v-model="tag.hidden" v-on:change="changeHidden(tag)" />
+                </div>
+                <div class="center-column">
+                    <span class="material-symbols-outlined clickable" @click="editTag(tag)">edit</span>
+                </div>
+            </template>
         </div>
     </div>
 
@@ -154,7 +202,7 @@ export default {
 
 .tags-table {
     border: 3px solid transparent !important;
-    grid-template-columns: 1fr 1fr 5rem;
+    grid-template-columns: 1fr 1fr 5rem 8rem;
     cursor: initial !important;
 }
 

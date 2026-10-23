@@ -86,6 +86,8 @@
                     items.push({ type, link, name, quantity, price });
                 }
 
+                const status = this.isDraft ? 'draft' : 'pendingIR';
+
                 // 2. Firestore Interaction
                 const db = useFirestore();
                 await addDoc(collection(db, 'orders'), {
@@ -93,7 +95,7 @@
                     lastUpdate: new Date(),
                     requestedBy: email,
                     requestedById: uid,
-                    status: 'pendingIR',
+                    status: status,
                     title,
                     supplier: this.selectedSupplier.name,
                     items,
@@ -120,6 +122,10 @@
                     // Show an error message to the user
                     this.showError("An error occurred while creating the order.");
                 }
+            },
+            async saveAsDraft(email, uid) {
+                this.isDraft = true;
+                await this.createOrder(email, uid);
             },
             showError(message) {
                 this.toast.error(message);
@@ -172,6 +178,24 @@
             },
             isStock(idx) {
                 console.log(idx)
+            },
+            async pasteItemFromClipboard() {
+                try {
+                    const text = await navigator.clipboard.readText();
+                    const item = JSON.parse(text);
+                    // Basic validation
+                    if (item && item.name && item.link && item.quantity && item.price !== undefined) {
+                        if (!item.type) {
+                            item.type = 'item'; // Default type
+                        }
+                        this.items.push(item);
+                        this.showSuccess("Item pasted!");
+                    } else {
+                        this.showError("Clipboard does not contain a valid item.");
+                    }
+                } catch (e) {
+                    this.showError("Failed to paste item.");
+                }
             }
         },
         data() {
@@ -186,7 +210,8 @@
                 selectedSupplier: {
                     name: '',
                     webpage: ''
-                }
+                },
+                isDraft: false
             }
         },
         setup() {
@@ -231,6 +256,15 @@
             <h2 class="page-title">Create a new order</h2>
         </div>
         <div id="order-creation-form" >
+            <p>
+                IF YOU WANT YOUR ORDER TO BE ACCEPTED
+                <ul>
+                    <li>Give a clear title to your order</li>
+                    <li>Give a clear name to each item including the options you want e.g. “Acrylic sheet 3x200x300mm”</li>
+                    <li>Delivery options - price and date - should be reasonable</li>
+                    <li>If you need to order several items, try to find them on the same supplier before placing several orders</li>
+                </ul>
+            </p>
             <div class="order-form-category">
                 <label class="category-label" for="title">Title</label>
                 <input type="text" id="title" name="title" required>
@@ -241,7 +275,7 @@
                     <select id="supplier" name="supplier" v-model="selectedSupplier" required>
                         <option v-for="supplier in suppliers" :value="supplier" v-bind:key="supplier">{{ supplier.name }}</option>
                     </select>
-                    <p class="blue" style="margin: 0">The links of the items must start with {{ selectedSupplier.webpage }}</p>
+                    <p class="blue" style="margin: 0">The links of the items must start with <a :href="selectedSupplier ? selectedSupplier.webpage : ''">{{ selectedSupplier ? selectedSupplier.webpage : '' }}</a>. If your supplier is not in the list, please contact <a href="mailto:dvic@devinci.fr">dvic@devinci.fr</a>.</p>
                 </div>
             </div>
             <div class="order-form-category">
@@ -277,8 +311,8 @@
                     <div id="items-list" class="table full-width">
                         <div class="table-header items-table">
                             <p>Type</p>
-                            <p>Link</p>
                             <p>Name</p>
+                            <p>Link</p>
                             <p>Quantity</p>
                             <p>Unit Price (€)</p>
                         </div>
@@ -289,19 +323,22 @@
                             <option value="cart">Cart</option>
                             <option value="stock">Stock</option>
                             </select>
-                            <input type="url" name="link" v-model="item.link" :pattern="selectedSupplier && selectedSupplier.webpage ? '^https://(www\.)?' + selectedSupplier.webpage.split('https://www.').slice(-1)[0].split('https://').slice(-1)[0] + '.*' : ''" required>
                             <input type="text" name="name" v-model="item.name" required>
+                            <input type="url" name="link" v-model="item.link" :pattern="selectedSupplier && selectedSupplier.webpage ? '^https://(www\.)?' + selectedSupplier.webpage.split('https://www.').slice(-1)[0].split('https://').slice(-1)[0] + '.*' : ''" required>
                             <input type="number" name="quantity" v-model="item.quantity" required>
-                            <input type="number" name="price" min="0.00" max="10000.00" step="0.01" v-model="item.price" required/>
-                            <span class="material-symbols-outlined red remove-item" @click="removeItem(index)">
-                            cancel
+                            <input type="number" name="price" min="0.000" max="10000.00" step="0.001" v-model="item.price" required/>
+                            <span class="material-symbols-outlined red remove-item" @click="removeItem(index)" title="Remove item">
+                                delete
                             </span>
                         </div>
                     </div>
 
-                    <div class="full-width center-column">
-                        <span class="material-symbols-outlined" id="add-item" v-on:click="addItem()">
+                    <div class="full-width center-both">
+                        <span class="material-symbols-outlined" id="add-item" v-on:click="addItem()" title="Add item">
                             add_circle
+                        </span>
+                        <span class="material-symbols-outlined" id="add-item" v-on:click="pasteItemFromClipboard()" title="Paste item">
+                            content_paste
                         </span>
                     </div>
                 </div>
@@ -310,7 +347,10 @@
                 <label class="category-label" for="comment">Comment</label>
                 <textarea id="comment" name="comment"></textarea>
             </div>
-            <button class="alt-button" v-on:click="createOrder(user.email, user.uid)">Create order</button>
+            <div class="center-row medium-gap">
+                <button class="alt-button" v-on:click="createOrder(user.email, user.uid)">Create order</button>
+                <button v-on:click="saveAsDraft(user.email, user.uid)">Save as draft</button>
+            </div>
         </div>
     </div>
 </template>
@@ -346,6 +386,20 @@
         .items-table {
             width: 768px;
         }
+    }
+
+    #order-creation-form > p {
+        background-color: var(--color-primary);
+        border: 1px solid var(--red);
+        border-radius: 1rem;
+        /* width: fit-content; */
+        margin: 1rem auto;
+        padding: 1rem;
+        color: var(--red) !important;
+    }
+
+    #order-creation-form > p li {
+        color: var(--red) !important;
     }
 
     #title {
