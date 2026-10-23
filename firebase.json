@@ -13,7 +13,8 @@
         "firebase-debug.log",
         "firebase-debug.*.log",
         "*.local"
-      ]
+      ],
+      "runtime": "python312"
     }
   ],
   "emulators": {
