@@ -3,7 +3,7 @@ import { computed, ref } from "vue";
 
 import Return from '../components/Return.vue'
 import { useDocument, useFirestore, useCurrentUser, useCollection } from 'vuefire'
-import { doc, updateDoc, collection } from "firebase/firestore";
+import { doc, updateDoc, collection, arrayUnion } from "firebase/firestore";
 
 
 import { useRoute } from 'vue-router'
@@ -137,15 +137,12 @@ export default {
                 return;
             }
             updateDoc(orderRef, {
-                "updates": [
-                    ...this.order.updates,
-                    {
-                        "type": "comment",
-                        "date": new Date(),
-                        "author": currentUser.value.email,
-                        "message": comment
-                    }
-                ]
+                "updates": arrayUnion({
+                    "type": "comment",
+                    "date": new Date(),
+                    "author": currentUser.value.email,
+                    "message": comment
+                })
             })
             area.value = ""
         },
@@ -328,7 +325,10 @@ export default {
         const tags = useCollection(collection(db, 'tags'))
         const order = useDocument(doc(db, 'orders', order_id))
         const userData = useDocument(doc(db, 'admins', currentUser.value.uid))
-        const reviewers = useCollection(collection(db, 'admins'))
+        // Only admins are allowed to list the admins collection
+        const reviewers = useCollection(computed(() =>
+            userData.value && userData.value.isIR ? collection(db, 'admins') : null
+        ))
         const toast = useToast()
         const suppliers = useCollection(collection(db, 'suppliers'))
         const supplierUrl = computed(() => {

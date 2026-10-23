@@ -1,5 +1,7 @@
 {
   "projects": {
-    "default": "orders-server"
+    "default": "orders-server-dev",
+    "dev": "orders-server-dev",
+    "prod": "orders-server"
   }
 }

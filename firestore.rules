@@ -3,47 +3,108 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Signed in with a verified @devinci.fr or @edu.devinci.fr address
+    function isDevinci() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.lower().matches('[^@]+@(edu[.])?devinci[.]fr');
+    }
+
+    function isAdmin() {
+      return isDevinci() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function changedKeys() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    function isOwner() {
+      return resource.data.requestedById == request.auth.uid
+        && resource.data.requestedBy == request.auth.token.email;
+    }
+
+    // Draft -> pending review
+    function isPublish() {
+      return changedKeys().hasOnly(['status'])
+        && resource.data.status == 'draft'
+        && request.resource.data.status == 'pendingIR';
+    }
+
+    function isCancel() {
+      return changedKeys().hasOnly(['status', 'cancelledBy'])
+        && resource.data.status in ['draft', 'pendingIR']
+        && request.resource.data.status == 'cancelled'
+        && request.resource.data.cancelledBy == request.auth.token.email;
+    }
+
+    // Owners can edit items while the order waits for review
+    function isItemsEdit() {
+      return changedKeys().hasOnly(['items', 'lastItemsUpdatedBy', 'ignoreItemsModification'])
+        && resource.data.status == 'pendingIR'
+        && request.resource.data.items is list
+        && request.resource.data.lastItemsUpdatedBy == request.auth.token.email;
+    }
+
+    // Exactly one comment appended, signed by the current user, history untouched
+    function isComment() {
+      let before = resource.data.updates;
+      let after = request.resource.data.updates;
+      let added = after[before.size()];
+      return changedKeys().hasOnly(['updates'])
+        && after.size() == before.size() + 1
+        && after[0:before.size()] == before
+        && added.keys().hasOnly(['type', 'date', 'author', 'message'])
+        && added.type == 'comment'
+        && added.author == request.auth.token.email
+        && added.date is timestamp
+        && added.message is string
+        && added.message.size() > 0
+        && added.message.size() <= 1000;
+    }
+
+    match /orders/{orderId} {
+      allow read: if isAdmin()
+        || (isDevinci() && resource.data.requestedBy == request.auth.token.email);
+
+      allow create: if isDevinci()
+        && request.resource.data.requestedBy == request.auth.token.email
+        && request.resource.data.requestedById == request.auth.uid
+        && request.resource.data.status in ['draft', 'pendingIR']
+        && request.resource.data.updates == [];
+
+      allow update: if (isAdmin()
+          && !changedKeys().hasAny(['requestedBy', 'requestedById', 'creationDate']))
+        || (isDevinci() && isOwner()
+          && (isPublish() || isCancel() || isItemsEdit() || isComment()));
+
+      allow delete: if false;
+    }
+
     match /suppliers/{supplier} {
-    	allow read: if request.auth != null;
-      allow write: if request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
-    }
-    
-    match /inventory_categories/{category} {
-    	allow read: if request.auth != null;
-      allow write: if request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
-    }
-    
-    match /inventory_items/{item} {
-    	allow read: if request.auth != null;
-      allow write: if request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow read: if isDevinci();
+      allow write: if isAdmin();
     }
 
-    match /orders/{order} {
-    	allow read: if request.auth != null;
-      allow create: if request.auth != null;
-      allow write: if (
-        request.auth != null && resource.data.requestedById == request.auth.uid) || (
-        request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
-      );
-
-      // Limit write of requiresReviewPI to admins
-      match /requiresReviewPI {
-        allow write: if request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
-      }
-      
-      match /status {
-        allow write: if request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
-      }
-    }
-    
     match /tags/{tag} {
-    	allow read: if request.auth != null;
-      allow write: if request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow read: if isDevinci();
+      allow write: if isAdmin();
+    }
+
+    match /inventory_categories/{category} {
+      allow read: if isDevinci();
+      allow write: if isAdmin();
+    }
+
+    match /inventory_items/{item} {
+      allow read: if isDevinci();
+      allow write: if isAdmin();
     }
 
     match /admins/{userId} {
-      allow read, write: if request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow read: if isDevinci() && (request.auth.uid == userId || isAdmin());
+      allow write: if isAdmin();
     }
 
+    // Everything else (mail, ...) is only reachable from Cloud Functions
   }
 }

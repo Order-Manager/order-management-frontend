@@ -9,20 +9,16 @@ import {
     getFirestore
 } from "firebase/firestore";
 
-
-import { useCollection } from 'vuefire'
-
+// Values come from .env.development (dev project) or .env.production (prod project)
 const firebaseConfig = {
-    apiKey: "AIzaSyCaP18xs7g2cYP-w0sao7H5tsVd8RCO8k4",
-    authDomain: "orders-server.firebaseapp.com",
-    projectId: "orders-server",
-    storageBucket: "orders-server.firebasestorage.app",
-    messagingSenderId: "7023564218",
-    appId: "1:7023564218:web:f4a01b1bca7e02105af983",
-    measurementId: "G-T0WPZQ5CW0"
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
+    measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
-
-
 
 // Initialize Firebase
 export const firebaseApp = initializeApp(firebaseConfig);

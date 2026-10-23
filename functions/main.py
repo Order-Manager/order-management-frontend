@@ -4,7 +4,11 @@ from firebase_functions import firestore_fn, https_fn
 # The Firebase Admin SDK to access Cloud Firestore.
 from firebase_admin import initialize_app, firestore, messaging
 import datetime
+import os
 import google.cloud.firestore
+
+# Set per project in functions/.env.<projectId>
+APP_URL = os.environ.get("APP_URL", "https://ift.devinci.fr/orders")
 
 # import logging
 
@@ -58,7 +62,7 @@ def updateLastUpdate(event: firestore_fn.Event[firestore_fn.DocumentSnapshot | N
         update = {
             "type": "order-items-updated",
             "date": datetime.datetime.now(),
-            "author": after.get("lastItemsUpdateBy")
+            "author": after.get("lastItemsUpdatedBy")
         }
 
         current_updates.append(update)
@@ -100,7 +104,7 @@ def updateLastUpdate(event: firestore_fn.Event[firestore_fn.DocumentSnapshot | N
         sendEmail(
             to=after.get("lastReviewRequestTo"),
             subject="New order review request",
-            message=f"You have been requested to review the order '{after.get('title')}' by {after.get('lastReviewRequestBy')}. Please check it out <a href='https://ift.devinci.fr/orders/#/view/{event.data.after.id}'>here</a>."
+            message=f"You have been requested to review the order '{after.get('title')}' by {after.get('lastReviewRequestBy')}. Please check it out <a href='{APP_URL}/#/view/{event.data.after.id}'>here</a>."
         )
 
     if before.get("status") != after.get("status"):

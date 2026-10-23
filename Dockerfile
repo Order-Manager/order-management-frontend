@@ -1,9 +1,11 @@
-FROM node:lts-alpine AS build-stage
+FROM node:20-alpine AS build-stage
+# "production" uses the orders-server project, "development" uses orders-server-dev
+ARG BUILD_MODE=production
 WORKDIR /app
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 COPY . .
-RUN npm run build
+RUN npm run build -- --mode $BUILD_MODE
 
 FROM nginx:stable-alpine AS production-stage
 COPY --from=build-stage /app/dist /usr/share/nginx/html/orders

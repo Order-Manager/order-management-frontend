@@ -30,10 +30,9 @@
                 successMessage.textContent = '';
                 successMessage.style.display = 'none';
 
-                if(!email.match(/.+devinci\.fr/)) {
-                    // errorMessage.textContent = 'Please enter a valid email address';
-                    // errorMessage.style.display = 'block';
-                    this.toast.error('Please enter a valid email address');
+                // Must match isDevinci() in firestore.rules
+                if(!email.match(/^[^@\s]+@(edu\.)?devinci\.fr$/i)) {
+                    this.toast.error('Please use your @devinci.fr or @edu.devinci.fr address');
                     return;
                 }
 
@@ -48,6 +47,7 @@
                         const errorCode = error.code;
                         const message = error.message;
                         console.log('Error', errorCode, message);
+                        this.toast.error('Could not send the login link: ' + message);
                     });
             }
         },
@@ -88,7 +88,7 @@
     <div id="mask"></div>
     <div class="center-column full-size">
         <div id="login-content" class="center-column">
-            <input type="email" id="email" placeholder="Email" pattern=".+devinci\.fr" required />
+            <input type="email" id="email" placeholder="Email" pattern="[^@\s]+@(edu\.)?devinci\.fr" required />
             <p id="email-error" class="error-message">Please enter a valid email address</p>
             <button id="login-button" v-on:click="signIn()">Login</button>
         </div>
