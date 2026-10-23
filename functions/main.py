@@ -5,10 +5,14 @@ from firebase_functions import firestore_fn, https_fn
 from firebase_admin import initialize_app, firestore, messaging
 import datetime
 import os
+from html import escape
 import google.cloud.firestore
 
 # Set per project in functions/.env.<projectId>
 APP_URL = os.environ.get("APP_URL", "https://ift.devinci.fr/orders")
+
+# Where the prod functions have always run; changing it means deleting the old ones
+REGION = "us-central1"
 
 # import logging
 
@@ -19,7 +23,7 @@ APP_URL = os.environ.get("APP_URL", "https://ift.devinci.fr/orders")
 app = initialize_app()
 
 
-@firestore_fn.on_document_created(document="orders/{orderId}")
+@firestore_fn.on_document_created(document="orders/{orderId}", region=REGION)
 def addUpdatesOnCreation(event: firestore_fn.Event[firestore_fn.DocumentSnapshot | None]) -> None:
     """"""
 
@@ -46,7 +50,7 @@ def addUpdatesOnCreation(event: firestore_fn.Event[firestore_fn.DocumentSnapshot
     event.data.reference.update({"updates": updates})
 
 
-@firestore_fn.on_document_updated(document="orders/{orderId}")
+@firestore_fn.on_document_updated(document="orders/{orderId}", region=REGION)
 def updateLastUpdate(event: firestore_fn.Event[firestore_fn.DocumentSnapshot | None]) -> None:
     """"""
 
@@ -80,7 +84,7 @@ def updateLastUpdate(event: firestore_fn.Event[firestore_fn.DocumentSnapshot | N
                 sendEmail(
                     to=after.get("requestedBy"),
                     subject="New comment on your order",
-                    message=f"New comment from {last_update.get('author')}: {last_update.get('message')}"
+                    message=f"New comment from {escape(str(last_update.get('author')))}: {escape(str(last_update.get('message')))}"
                 )
 
 
@@ -104,7 +108,7 @@ def updateLastUpdate(event: firestore_fn.Event[firestore_fn.DocumentSnapshot | N
         sendEmail(
             to=after.get("lastReviewRequestTo"),
             subject="New order review request",
-            message=f"You have been requested to review the order '{after.get('title')}' by {after.get('lastReviewRequestBy')}. Please check it out <a href='{APP_URL}/#/view/{event.data.after.id}'>here</a>."
+            message=f"You have been requested to review the order '{escape(str(after.get('title')))}' by {escape(str(after.get('lastReviewRequestBy')))}. Please check it out <a href='{APP_URL}/#/view/{escape(str(event.data.after.id))}'>here</a>."
         )
 
     if before.get("status") != after.get("status"):
@@ -140,7 +144,7 @@ def updateLastUpdate(event: firestore_fn.Event[firestore_fn.DocumentSnapshot | N
             sendEmail(
                 to=after.get("requestedBy"),
                 subject="Your order has been approved",
-                message=f"Your order '{after.get('title')}' has been approved by {after.get('reviewIRBy')}. It will be processed shortly."
+                message=f"Your order '{escape(str(after.get('title')))}' has been approved by {escape(str(after.get('reviewIRBy')))}. It will be processed shortly."
             )
 
             event.data.after.reference.update({
@@ -162,7 +166,7 @@ def updateLastUpdate(event: firestore_fn.Event[firestore_fn.DocumentSnapshot | N
             sendEmail(
                 to=after.get("requestedBy"),
                 subject="Your order has been rejected",
-                message=f"Your order '{after.get('title')}' has been rejected by {after.get('reviewIRBy')}. Please contact the Research Engineer for more information."
+                message=f"Your order '{escape(str(after.get('title')))}' has been rejected by {escape(str(after.get('reviewIRBy')))}. Please contact the Research Engineer for more information."
             )
 
             event.data.after.reference.update({
@@ -183,7 +187,7 @@ def updateLastUpdate(event: firestore_fn.Event[firestore_fn.DocumentSnapshot | N
             sendEmail(
                 to=after.get("requestedBy"),
                 subject="Your items have been ordered",
-                message=f"Your order '{after.get('title')}' has been processed by {after.get('orderedBy')}. You will be notified when it is ready for pickup."
+                message=f"Your order '{escape(str(after.get('title')))}' has been processed by {escape(str(after.get('orderedBy')))}. You will be notified when it is ready for pickup."
             )
 
             event.data.after.reference.update({
@@ -204,7 +208,7 @@ def updateLastUpdate(event: firestore_fn.Event[firestore_fn.DocumentSnapshot | N
             sendEmail(
                 to=after.get("requestedBy"),
                 subject="Your order has been received",
-                message=f"Your order '{after.get('title')}' has been received by {after.get('receivedBy')}. Please pick it up at your convenience."
+                message=f"Your order '{escape(str(after.get('title')))}' has been received by {escape(str(after.get('receivedBy')))}. Please pick it up at your convenience."
             )
 
             event.data.after.reference.update({
@@ -230,7 +234,7 @@ def updateLastUpdate(event: firestore_fn.Event[firestore_fn.DocumentSnapshot | N
             sendEmail(
                 to=after.get("requestedBy"),
                 subject="Your order has been canceled",
-                message=f"Your order '{after.get('title')}' has been canceled by {after.get('canceledBy')}."
+                message=f"Your order '{escape(str(after.get('title')))}' has been canceled by {escape(str(after.get('canceledBy')))}."
             )
 
 
@@ -252,7 +256,7 @@ def updateLastUpdate(event: firestore_fn.Event[firestore_fn.DocumentSnapshot | N
             sendEmail(
                 to=after.get("requestedBy"),
                 subject="Your order has been completed",
-                message=f"Your order '{after.get('title')}' has been completed by {after.get('completedBy')}."
+                message=f"Your order '{escape(str(after.get('title')))}' has been completed by {escape(str(after.get('completedBy')))}."
             )
 
     if event.data.before.get("lastUpdate") == event.data.after.get("lastUpdate"):
