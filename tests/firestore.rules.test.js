@@ -172,6 +172,13 @@ describe('orders: owner updates', () => {
         }))
     })
 
+    test('add a comment by rewriting the whole list (pre-arrayUnion client)', async () => {
+        const current = (await getDoc(doc(db(STUDENT), 'orders/o1'))).data().updates
+        await assertSucceeds(updateDoc(doc(db(STUDENT), 'orders/o1'), {
+            updates: [...current, { type: 'comment', date: new Date(), author: STUDENT.email, message: 'Thanks' }],
+        }))
+    })
+
     test('cannot comment as someone else or rewrite history', async () => {
         await assertFails(updateDoc(doc(db(STUDENT), 'orders/o1'), {
             updates: arrayUnion({ type: 'comment', date: new Date(), author: ADMIN.email, message: 'Approved' }),
