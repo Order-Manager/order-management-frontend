@@ -17,6 +17,19 @@ The Firebase web config lives in `.env.production` and `.env.development`. `npm 
 npm run dev
 ```
 
+## Running against local emulators
+
+No Firebase project involved: auth and Firestore run locally (needs Java), with the real security rules.
+
+```bash
+npm run emulators       # terminal 1
+npm run seed:emulator   # once per emulator start: users, suppliers, tags, orders in every status
+npm run dev:emulator    # terminal 2, then open http://localhost:5173/orders/
+```
+
+Sign in as `admin@devinci.fr`, `student@edu.devinci.fr` or `camille.lefebvre-de-la-fontaine@edu.devinci.fr`.
+After requesting the link in the app, print it with `node scripts/seed-emulator.mjs link <email>`.
+
 ## Building the Docker image
 
 ```bash

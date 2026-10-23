@@ -6,10 +6,15 @@ import {
     getAnalytics
 } from "firebase/analytics";
 import {
+    connectAuthEmulator,
+    getAuth
+} from "firebase/auth";
+import {
+    connectFirestoreEmulator,
     getFirestore
 } from "firebase/firestore";
 
-// Values come from .env.development (dev project) or .env.production (prod project)
+// Values come from .env.development (dev project), .env.production (prod project) or .env.emulator
 const firebaseConfig = {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
     authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -24,4 +29,9 @@ const firebaseConfig = {
 export const firebaseApp = initializeApp(firebaseConfig);
 export const db = getFirestore(firebaseApp)
 
-const analytics = getAnalytics(firebaseApp);
+if (import.meta.env.VITE_USE_EMULATORS === "true") {
+    connectFirestoreEmulator(db, "127.0.0.1", 8080);
+    connectAuthEmulator(getAuth(firebaseApp), "http://127.0.0.1:9099", { disableWarnings: true });
+} else {
+    getAnalytics(firebaseApp);
+}

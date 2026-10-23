@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test:rules": "firebase emulators:exec --only firestore --project demo-orders 'vitest run tests'"
+    "test:rules": "firebase emulators:exec --only firestore --project demo-orders 'vitest run tests'",
+    "dev:emulator": "vite --mode emulator",
+    "emulators": "firebase emulators:start --only auth,firestore --project demo-orders",
+    "seed:emulator": "node scripts/seed-emulator.mjs"
   },
   "dependencies": {
     "firebase": "^10.8.0",
