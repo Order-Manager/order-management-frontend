@@ -1,7 +1,7 @@
 <script>
-import { completedStatuses } from '../utils/definitions.js'
 import StatusBadge from './StatusBadge.vue'
 import RelativeTime from './RelativeTime.vue'
+import { formatEuros, orderTotal } from '../utils/dates.js'
 
 
 export default {
@@ -14,32 +14,45 @@ export default {
             if (event.target.closest('a')) return;
             this.$router.push(`/view/${id}`);
         },
-    },
-    setup() {
-
-        return {
-            completedStatuses,
-        }
+        itemCount(order) {
+            const count = (order.items || []).length;
+            return `${count} item${count === 1 ? '' : 's'}`;
+        },
+        formatEuros, orderTotal,
     },
     props: {
         orders: Array,
-        showCompleted: Boolean
+        caption: String,
+        // The date shown is the one the list is sorted by
+        dateField: {
+            type: String,
+            default: 'creationDate'
+        },
     }
 }
 
 </script>
 
 <template>
-    <div class="table-scroll" id="orders">
+    <div class="table-scroll">
         <table class="data-table orderlist-table">
-            <caption class="visually-hidden">Orders, newest first</caption>
+            <caption class="visually-hidden">{{ caption }}</caption>
+            <!-- Fixed widths so stacked tables (one per stage) line up -->
+            <colgroup>
+                <col class="w-status" />
+                <col />
+                <col class="w-requested" />
+                <col class="w-total" />
+                <col class="w-date" />
+                <col class="w-supplier" />
+            </colgroup>
             <thead>
                 <tr>
                     <th scope="col">Status</th>
-                    <th scope="col">Title</th>
+                    <th scope="col">Order</th>
                     <th scope="col">Requested by</th>
-                    <th scope="col">Last update</th>
-                    <th scope="col">Created</th>
+                    <th scope="col">Total</th>
+                    <th scope="col">{{ dateField === 'lastUpdate' ? 'Last update' : 'Created' }}</th>
                     <th scope="col">Supplier</th>
                 </tr>
             </thead>
@@ -47,16 +60,19 @@ export default {
                 <tr
                     class="link-row"
                     v-for="order in orders"
-                    v-show="!completedStatuses.includes(order.status) || showCompleted"
                     :key="order.id"
                     @click="openFromRow(order.id, $event)"
                 >
                     <td class="col-status"><StatusBadge :status="order.status" /></td>
-                    <td class="col-title"><router-link :to="`/view/${order.id}`">{{ order.title }}</router-link></td>
-                    <td class="col-requested" data-label="By">{{ order.requestedBy }}</td>
-                    <td class="col-updated" data-label="Updated"><RelativeTime :value="order.lastUpdate" /></td>
-                    <td class="col-created" data-label="Created"><RelativeTime :value="order.creationDate" /></td>
-                    <td class="col-supplier" data-label="Supplier">{{ order.supplier }}</td>
+                    <td class="col-title">
+                        <router-link :to="`/view/${order.id}`">{{ order.title }}</router-link>
+                        <span class="item-count">{{ itemCount(order) }}</span>
+                    </td>
+                    <!-- Long emails break after the @ rather than mid-word -->
+                    <td class="col-requested">{{ (order.requestedBy || '').split('@')[0] }}<wbr>@{{ (order.requestedBy || '').split('@')[1] }}</td>
+                    <td class="col-total">{{ formatEuros(orderTotal(order.items)) }}</td>
+                    <td class="col-date" :data-label="dateField === 'lastUpdate' ? 'Updated' : 'Created'"><RelativeTime :value="order[dateField]" /></td>
+                    <td class="col-supplier">{{ order.supplier }}</td>
                 </tr>
             </tbody>
         </table>
@@ -66,13 +82,38 @@ export default {
 
 <style>
 
-.orderlist-table .col-status {
+.orderlist-table {
+    table-layout: fixed;
+}
+
+.orderlist-table .w-status { width: 17%; }
+.orderlist-table .w-requested { width: 18%; }
+.orderlist-table .w-total { width: 9%; }
+.orderlist-table .w-date { width: 13%; }
+.orderlist-table .w-supplier { width: 12%; }
+
+.orderlist-table .col-title {
+    text-align: left;
+}
+
+.orderlist-table .col-title a {
+    color: var(--text);
+}
+
+.orderlist-table .item-count {
+    display: block;
+    font-size: var(--font-sm);
+    color: var(--text-muted);
+}
+
+.orderlist-table .col-total {
     white-space: nowrap;
+    font-variant-numeric: tabular-nums;
 }
 
 /* Phones and tablets: each order becomes a card, title first */
 @media (max-width: 59.99rem) {
-    .orderlist-table thead {
+    .orderlist-table thead, .orderlist-table colgroup {
         display: block;
         position: absolute;
         width: 1px;
@@ -90,11 +131,11 @@ export default {
         grid-template-columns: auto 1fr;
         grid-template-areas:
             "title title"
-            "status updated"
+            "status date"
             "requested requested"
-            "supplier created";
-        gap: 0.25rem 1rem;
-        padding: 0.875rem 1rem;
+            "supplier total";
+        gap: var(--space-2) var(--space-4);
+        padding: var(--space-4);
     }
 
     .orderlist-table td {
@@ -111,15 +152,18 @@ export default {
 
     .orderlist-table .col-title {
         grid-area: title;
-        font-size: 1.05rem;
-        color: var(--text);
-        margin-bottom: 0.25rem;
+        font-size: var(--font-lg);
+    }
+
+    .orderlist-table .col-title .item-count {
+        display: inline;
+        margin-left: var(--space-2);
     }
 
     .orderlist-table .col-status { grid-area: status; }
-    .orderlist-table .col-updated { grid-area: updated; text-align: right; }
-    .orderlist-table .col-requested { grid-area: requested; overflow-wrap: anywhere; }
+    .orderlist-table .col-date { grid-area: date; text-align: right; }
+    .orderlist-table .col-requested { grid-area: requested; overflow-wrap: anywhere; color: var(--text-muted); }
     .orderlist-table .col-supplier { grid-area: supplier; overflow-wrap: anywhere; }
-    .orderlist-table .col-created { grid-area: created; text-align: right; }
+    .orderlist-table .col-total { grid-area: total; text-align: right; color: var(--text); }
 }
 </style>

@@ -6,120 +6,92 @@ import { doc, collection, where, query, orderBy, limit } from "firebase/firestor
 
 import Orders from "../components/Orders.vue";
 
-import { statusTypesToMessage, statusTypesToColor, completedStatuses } from '../utils/definitions.js'
+import { statusTypesToMessage } from '../utils/definitions.js'
 
+const PAGE_SIZE = 15;
+
+// Admins' "Needs action" view is grouped by what they have to do next
+const STAGES = [
+  { status: "pendingIR", title: "To review" },
+  { status: "processingOrder", title: "To order" },
+  { status: "ordered", title: "Waiting for delivery" },
+  { status: "received", title: "Ready for pick-up" },
+];
 
 export default {
-  methods: {
-    // loadMoreOrders() {
-    //   if (this.orders.length === this.limitVal) {
-    //     this.limitVal += 15;
-    //   }
-    // },
-  },
   setup() {
     const db = useFirestore();
     const currentUser = useCurrentUser();
 
     const userData = useDocument(doc(db, 'admins', currentUser.value.uid))
+    const isAdmin = computed(() => !!(userData.value && userData.value.isIR));
+
+    const views = computed(() => [
+      isAdmin.value
+        ? { id: "active", label: "Needs action", statuses: STAGES.map(stage => stage.status), paged: false }
+        : { id: "active", label: "Active", statuses: ["draft", "pendingIR", "processingOrder", "ordered", "received"], paged: false },
+      { id: "completed", label: "Completed", statuses: ["completed"], paged: true },
+      { id: "closed", label: "Rejected & cancelled", statuses: ["refusedIR", "cancelled"], paged: true },
+      { id: "all", label: "All", statuses: ["draft", "pendingIR", "processingOrder", "ordered", "received", "completed", "refusedIR", "cancelled"], paged: true },
+    ]);
+    const viewId = ref("active");
+    const view = computed(() => views.value.find(v => v.id === viewId.value));
 
     const sortBy = ref("creationDate");
-    const limitVal = ref(15); // Pagination limit
-    const sortedByCreationDate = ref(false);
-    const showCompleted = ref(true);
+    const limitVal = ref(PAGE_SIZE);
     const searchQuery = ref("");
-    const getInitialStatuses = () => {
-      if (userData.value && userData.value.isIR) {
-        return [
-          { title: "received", desc: "Waiting for Pick Up" },
-          { title: "ordered", desc: "Ordered" },
-          { title: "processingOrder", desc: "Processing Order" },
-          { title: "pendingIR", desc: "Pending review" },
-        ]
-      } else {
-        return [
-          { title: "received", desc: "Waiting for Pick Up" },
-          { title: "ordered", desc: "Ordered" },
-          { title: "processingOrder", desc: "Processing Order" },
-          { title: "pendingIR", desc: "Pending review" },
-          { title: "draft", desc: "Draft" },
-        ]
-      }
-    };
-    const selectedStatuses = ref(getInitialStatuses());
 
-    watch(() => userData.value, () => selectedStatuses.value = getInitialStatuses(), { immediate: false });
-
-    const selectedStatusTitles = computed({
-      get: () => selectedStatuses.value.map(status => status.title),
-      set: (titles) => selectedStatuses.value = statuses.value.filter(status => titles.includes(status.title)),
-    });
-
-    const statuses = ref([
-      { title: "completed", desc: "Order Completed" },
-      { title: "received", desc: "Waiting for Pick Up" },
-      { title: "ordered", desc: "Ordered" },
-      { title: "processingOrder", desc: "Processing Order" },
-      { title: "pendingIR", desc: "Pending review" },
-      { title: "draft", desc: "Draft" },
-      { title: "refusedIR", desc: "Order Rejected" },
-      { title: "cancelled", desc: "Order Cancelled" },
-    ]);
-
+    // A new view or sort starts from the first page again
+    watch([viewId, sortBy], () => limitVal.value = PAGE_SIZE);
 
     const orders = useCollection(
       computed(() => {
-        if (userData.value && userData.value.isIR) {
-          return query(
-            collection(db, "orders"),
-            where("status", "in", selectedStatusTitles.value.length ? selectedStatusTitles.value : ["none"]),
-            orderBy(sortBy.value, "desc"),
-            limit(limitVal.value)
-          );
-        } else {
-          // Add draft status to the query
-          const statusesToInclude = selectedStatusTitles.value.length ? selectedStatusTitles.value : ["none"];
-          return query(
-            collection(db, "orders"),
-            where("requestedBy", "==", currentUser.value.email),
-            where("status", "in", statusesToInclude),
-            orderBy(sortBy.value, "desc"),
-            limit(limitVal.value)
-          );
-        }
+        const constraints = [where("status", "in", view.value.statuses)];
+        if (!isAdmin.value) constraints.unshift(where("requestedBy", "==", currentUser.value.email));
+        constraints.push(orderBy(sortBy.value, "desc"));
+        // Active orders are few; history is paged
+        if (view.value.paged) constraints.push(limit(limitVal.value));
+        return query(collection(db, "orders"), ...constraints);
       })
     );
 
+    const loading = computed(() => orders.pending.value);
+    const hasMore = computed(() => view.value.paged && orders.value.length === limitVal.value);
     const loadMoreOrders = () => {
-      if (orders.value.length === limitVal.value) {
-        limitVal.value += 15;
-      }
+      limitVal.value += PAGE_SIZE;
     };
 
+    // Search only looks at the loaded orders; "Load more" widens it on request
     const filteredOrders = computed(() => {
-      // console.log(orders.value);
-      const filteredByStatus = orders.value;//.filter(order => selectedStatuses.value.map(status => status.title).includes(order.status));
-      if (!searchQuery.value) return filteredByStatus;
-      const filteredOrders = filteredByStatus.filter(order => {
-        const query = searchQuery.value.toLowerCase();
-        return (
-          order.title.toLowerCase().includes(query) ||
-          order.requestedBy.toLowerCase().includes(query) ||
-          order.supplier.toLowerCase().includes(query) ||
-          order.items.filter(el => el.name.toLowerCase().includes(query)).length > 0 ||
-          statusTypesToMessage[order.status].toLowerCase().includes(query)
-        );
-      });
-      if (filteredOrders.length  == 0) {
-        loadMoreOrders();
+      const q = searchQuery.value.trim().toLowerCase();
+      if (!q) return orders.value;
+      return orders.value.filter(order =>
+        (order.title || "").toLowerCase().includes(q) ||
+        (order.requestedBy || "").toLowerCase().includes(q) ||
+        (order.supplier || "").toLowerCase().includes(q) ||
+        (order.items || []).some(item => (item.name || "").toLowerCase().includes(q)) ||
+        (statusTypesToMessage[order.status] || "").toLowerCase().includes(q)
+      );
+    });
+
+    const groups = computed(() => {
+      if (!(isAdmin.value && viewId.value === "active")) {
+        return [{ title: null, orders: filteredOrders.value }];
       }
-      return filteredOrders;
+      return STAGES
+        .map(stage => ({ title: stage.title, orders: filteredOrders.value.filter(order => order.status === stage.status) }))
+        .filter(group => group.orders.length > 0);
+    });
+
+    const emptyMessage = computed(() => {
+      if (searchQuery.value.trim()) return `No orders match “${searchQuery.value.trim()}”${hasMore.value ? " among the loaded ones" : ""}.`;
+      if (viewId.value === "active") return isAdmin.value ? "Nothing needs your attention right now." : "You have no orders in progress.";
+      return "No orders here yet.";
     });
 
     return {
-      userData, completedStatuses, showCompleted, orders, sortedByCreationDate,
-      statusTypesToMessage, statusTypesToColor, searchQuery, filteredOrders,
-      selectedStatuses, selectedStatusTitles, statuses, sortBy, limitVal, loadMoreOrders
+      isAdmin, views, viewId, orders, loading, sortBy, searchQuery, groups, filteredOrders,
+      hasMore, loadMoreOrders, emptyMessage
     };
   },
   components: {
@@ -130,67 +102,56 @@ export default {
 
 <template>
   <h1 class="visually-hidden">Orders</h1>
-  <div id="top-controls" class="medium-gap">
+  <div id="top-controls">
     <router-link class="button-link primary" id="new-order" to="/create">New order</router-link>
 
     <label for="orders-search-filter" class="visually-hidden">Search orders</label>
-    <input id="orders-search-filter" type="search" v-model="searchQuery" placeholder="Search orders..." />
-
-    <details id="orders-status-filter">
-      <summary>Status: {{ selectedStatuses.length }} selected</summary>
-      <fieldset>
-        <legend class="visually-hidden">Show orders with these statuses</legend>
-        <label v-for="status in statuses" :key="status.title" class="status-option">
-          <input type="checkbox" :value="status.title" v-model="selectedStatusTitles" />
-          <span :class="statusTypesToColor[status.title]">{{ status.desc }}</span>
-        </label>
-      </fieldset>
-    </details>
+    <input id="orders-search-filter" type="search" enterkeyhint="search" v-model="searchQuery" placeholder="Search orders..." />
 
     <label for="orders-sort" class="visually-hidden">Sort by</label>
     <select id="orders-sort" v-model="sortBy">
-      <option value="creationDate">Sort by creation date</option>
-      <option value="lastUpdate">Sort by last update</option>
+      <option value="creationDate">Newest first</option>
+      <option value="lastUpdate">Recently updated</option>
     </select>
   </div>
+
+  <fieldset id="view-chips">
+    <legend class="visually-hidden">Show</legend>
+    <label v-for="option in views" :key="option.id" class="chip">
+      <input type="radio" name="orders-view" class="visually-hidden" :value="option.id" v-model="viewId" />
+      <span class="material-symbols-outlined" aria-hidden="true" v-if="viewId === option.id">check</span>
+      {{ option.label }}
+    </label>
+  </fieldset>
+
   <div id="orders-list">
-    <Orders :orders="filteredOrders" :showCompleted="showCompleted" />
-    <p v-if="orders.length === 0" role="status">No orders with these statuses.</p>
-    <button v-if="orders.length === limitVal" @click="loadMoreOrders">
-      View more
-    </button>
+    <p v-if="loading && orders.length === 0" role="status">Loading orders…</p>
+
+    <template v-else-if="filteredOrders.length">
+      <section v-for="group in groups" :key="group.title || 'all'" class="orders-group" :aria-labelledby="group.title ? `group-${group.title}` : null">
+        <h2 v-if="group.title" :id="`group-${group.title}`" class="group-title">
+          {{ group.title }} <span class="group-count">{{ group.orders.length }}</span>
+        </h2>
+        <Orders :orders="group.orders" :dateField="sortBy" :caption="group.title || views.find(v => v.id === viewId).label" />
+      </section>
+    </template>
+
+    <div v-else class="empty-state" role="status">
+      <p>{{ emptyMessage }}</p>
+      <router-link v-if="!isAdmin && viewId === 'active' && !searchQuery" class="button-link primary" to="/create">Create an order</router-link>
+    </div>
+
+    <button v-if="hasMore" type="button" @click="loadMoreOrders">Load more orders</button>
   </div>
 </template>
 
-
 <style>
-
-
-.orderlist-table {
-  grid-template-columns: 1fr 2fr 2fr 1fr 1fr 1fr;
-}
 
 #top-controls {
   display: flex;
-  justify-content: space-between;
-  margin-bottom: 1rem;
-  flex-wrap: wrap ;
-}
-
-#orders-list {
-    padding: 0 1px;
-    /* overflow-x: hidden; */
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    align-items: center;
-}
-
-#orders {
-  width: 100%;
-  /* border-spacing: 0; */
-  border-collapse: collapse;
-  /* background-color: var(--color-secondary); */
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
 }
 
 #orders-search-filter {
@@ -198,75 +159,84 @@ export default {
   min-width: 0;
 }
 
-#orders-status-filter {
-  flex-grow: 1;
-  min-width: 16rem;
-
-}
-
 #orders-sort {
   flex: 0 1 14rem;
   min-width: 0;
-  padding: 0.5rem;
-  border-radius: 8px;
+}
+
+#view-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-5) 0;
+  padding: 0;
+  border: none;
+}
+
+#view-chips .chip {
+  font-size: var(--font-md);
+  cursor: pointer;
+}
+
+#view-chips .chip:has(input:focus-visible) {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+#view-chips .chip .material-symbols-outlined {
+  font-size: 1.1rem;
+}
+
+#orders-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  align-items: stretch;
+}
+
+#orders-list > button {
+  align-self: center;
+}
+
+.group-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3) 0;
+  font-size: var(--font-lg);
+}
+
+.group-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  padding: 0 var(--space-2);
+  border-radius: 999px;
+  background-color: var(--bg-light);
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--space-4);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  text-align: center;
+}
+
+.empty-state p {
+  margin: 0;
 }
 
 @media (max-width: 47.99rem) {
-  #top-controls {
-    gap: 0.75rem;
-  }
-
   #orders-sort {
     flex: 1 1 10rem;
   }
 }
-
-
-#orders-status-filter {
-  position: relative;
-  flex: 1 1 12rem;
-  min-width: 0;
-}
-
-#orders-status-filter summary {
-  display: flex;
-  align-items: center;
-  min-height: 2.75rem;
-  padding: 0 1rem;
-  box-sizing: border-box;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background-color: var(--bg-light);
-  color: var(--text-muted);
-  cursor: pointer;
-}
-
-#orders-status-filter fieldset {
-  position: absolute;
-  z-index: 50;
-  left: 0;
-  right: 0;
-  margin: 0.25rem 0 0 0;
-  padding: 0.5rem;
-  display: flex;
-  flex-direction: column;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background-color: var(--bg-light);
-}
-
-.status-option {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  min-height: 2.75rem;
-  padding: 0 0.5rem;
-  font-size: 1rem;
-  cursor: pointer;
-}
-
-/* p, p {
-  border: 1px solid var(--color-primary);
-} */
 
 </style>
