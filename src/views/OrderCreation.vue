@@ -317,7 +317,7 @@
                 <textarea id="comment" name="comment" v-model="comment" rows="3"></textarea>
             </div>
             <div class="center-row medium-gap form-actions">
-                <button type="submit" class="alt-button" @click="isDraft = false">Create order</button>
+                <button type="submit" class="primary" @click="isDraft = false">Create order</button>
                 <button type="button" v-on:click="saveAsDraft(user.email, user.uid)">Save as draft</button>
             </div>
         </form>

@@ -42,6 +42,22 @@
   --gradient: linear-gradient(0deg, var(--bg), var(--bg-light));
 
   --primary: #007f7f;
+  /* Solid IFT teal for primary buttons: white text on it is 4.8:1 in both themes */
+  --accent: #007f7f;
+  --accent-hover: #006a6a;
+  --on-accent: #ffffff;
+
+  /* Spacing and type scale */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --font-sm: 0.875rem;
+  --font-md: 1rem;
+  --font-lg: 1.125rem;
+  --radius: 8px;
 
   --s-shade: 1px;
   --b-shade: 2px;
@@ -206,6 +222,15 @@ button, .button-link {
     border-color: var(--border-hover);
   }
 
+  button.primary:hover:not(:disabled), .button-link.primary:hover {
+    background-color: var(--accent-hover);
+    border-color: var(--accent-hover);
+  }
+
+  button.danger:hover:not(:disabled) {
+    background-color: color-mix(in oklch, var(--red) 12%, var(--bg-light));
+  }
+
   .data-table tr.link-row:hover {
     background-color: var(--bg);
   }
@@ -248,6 +273,60 @@ input[type="checkbox"], input[type="radio"] {
   accent-color: var(--link);
   cursor: pointer;
   vertical-align: middle;
+}
+
+/* Button kinds: default (secondary), .primary (one per screen), .danger (destructive) */
+button.primary, .button-link.primary {
+  background-color: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+button.danger, .button-link.danger {
+  color: var(--red);
+  border-color: var(--red);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Toggle chips (tags, list filters): selected state shown by border, tint and a check */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 2.75rem;
+  padding: 0 var(--space-4);
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background-color: var(--bg-light);
+  color: var(--text);
+}
+
+.chip[aria-pressed="true"], .chip:has(input:checked) {
+  border-color: var(--link);
+  background-color: color-mix(in oklch, var(--link) 18%, var(--bg-light));
+}
+
+/* Status pill: icon + text, so status never relies on colour alone */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0.1rem 0.6rem 0.1rem 0.4rem;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-size: var(--font-sm);
+  font-weight: 500;
+  white-space: nowrap;
+  line-height: 1.6;
+}
+
+.status-badge .material-symbols-outlined {
+  font-size: 1.1em;
 }
 
 /* Links that look like buttons (navigation, not actions) */

@@ -188,7 +188,7 @@ export default {
                     <label for="new-tag-type">Type</label>
                     <input id="new-tag-type" type="text" v-model="newTagType" required />
                 </div>
-            <button type="submit" class="alt-button add-button">
+            <button type="submit" class="primary add-button">
                 <span class="material-symbols-outlined" aria-hidden="true">add_circle</span>
                 Add tag
             </button>

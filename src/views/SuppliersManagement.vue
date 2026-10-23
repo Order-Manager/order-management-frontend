@@ -183,7 +183,7 @@ export default {
                     <label for="new-supplier-webpage">Website</label>
                     <input id="new-supplier-webpage" type="url" v-model="newSupplierWebpage" required />
                 </div>
-            <button type="submit" class="alt-button add-button">
+            <button type="submit" class="primary add-button">
                 <span class="material-symbols-outlined" aria-hidden="true">add_circle</span>
                 Add supplier
             </button>

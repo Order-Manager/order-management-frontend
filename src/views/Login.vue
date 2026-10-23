@@ -112,7 +112,7 @@
                 :aria-invalid="messageIsError"
                 aria-describedby="login-message"
             />
-            <button type="submit" class="alt-button" :disabled="sending">{{ sending ? 'Sending…' : 'Send me a sign-in link' }}</button>
+            <button type="submit" class="primary" :disabled="sending">{{ sending ? 'Sending…' : 'Send me a sign-in link' }}</button>
             <p id="login-message" role="status" :class="messageIsError ? 'red' : 'green'">{{ message }}</p>
         </form>
     </div>

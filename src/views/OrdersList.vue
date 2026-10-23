@@ -131,7 +131,7 @@ export default {
 <template>
   <h1 class="visually-hidden">Orders</h1>
   <div id="top-controls" class="medium-gap">
-    <router-link class="button-link" id="new-order" to="/create">New order</router-link>
+    <router-link class="button-link primary" id="new-order" to="/create">New order</router-link>
 
     <label for="orders-search-filter" class="visually-hidden">Search orders</label>
     <input id="orders-search-filter" type="search" v-model="searchQuery" placeholder="Search orders..." />
@@ -156,7 +156,7 @@ export default {
   <div id="orders-list">
     <Orders :orders="filteredOrders" :showCompleted="showCompleted" />
     <p v-if="orders.length === 0" role="status">No orders with these statuses.</p>
-    <button v-if="orders.length === limitVal" @click="loadMoreOrders" class="alt-button">
+    <button v-if="orders.length === limitVal" @click="loadMoreOrders">
       View more
     </button>
   </div>

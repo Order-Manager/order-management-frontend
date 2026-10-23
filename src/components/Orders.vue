@@ -1,8 +1,13 @@
 <script>
-import { statusTypesToMessage, statusTypesToColor, completedStatuses } from '../utils/definitions.js'
+import { completedStatuses } from '../utils/definitions.js'
+import StatusBadge from './StatusBadge.vue'
+import RelativeTime from './RelativeTime.vue'
 
 
 export default {
+    components: {
+        StatusBadge, RelativeTime
+    },
     methods: {
         // Clicking anywhere on a row opens the order; the title link handles keyboard, middle-click and new tabs
         openFromRow(id, event) {
@@ -14,8 +19,6 @@ export default {
 
         return {
             completedStatuses,
-            statusTypesToMessage,
-            statusTypesToColor,
         }
     },
     props: {
@@ -48,11 +51,11 @@ export default {
                     :key="order.id"
                     @click="openFromRow(order.id, $event)"
                 >
-                    <td class="col-status" :class="statusTypesToColor[order.status] ? statusTypesToColor[order.status] : 'red'">{{ statusTypesToMessage[order.status] ? statusTypesToMessage[order.status] : "Unknown Status" }}</td>
+                    <td class="col-status"><StatusBadge :status="order.status" /></td>
                     <td class="col-title"><router-link :to="`/view/${order.id}`">{{ order.title }}</router-link></td>
                     <td class="col-requested" data-label="By">{{ order.requestedBy }}</td>
-                    <td class="col-updated" data-label="Updated">{{ order.lastUpdate.toDate().toLocaleString("en-GB") }}</td>
-                    <td class="col-created" data-label="Created">{{ order.creationDate.toDate().toLocaleString("en-GB") }}</td>
+                    <td class="col-updated" data-label="Updated"><RelativeTime :value="order.lastUpdate" /></td>
+                    <td class="col-created" data-label="Created"><RelativeTime :value="order.creationDate" /></td>
                     <td class="col-supplier" data-label="Supplier">{{ order.supplier }}</td>
                 </tr>
             </tbody>

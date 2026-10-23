@@ -52,12 +52,25 @@ export const updateTypesToMessage = {
 export const statusTypesToMessage = {
     "draft": "Draft",
     "pendingIR": "Pending review",
-    "refusedIR": "Order Rejected",
-    "processingOrder": "Processing Order",
+    "approvedIR": "Approved",
+    "refusedIR": "Rejected",
+    "processingOrder": "Approved",
     "ordered": "Ordered",
-    "received": "Waiting for Pick Up",
-    "completed": "Order Completed",
-    "cancelled": "Order Cancelled",
+    "received": "Ready for pick-up",
+    "completed": "Completed",
+    "cancelled": "Cancelled",
+};
+
+export const statusTypesToIcon = {
+    "draft": "edit_note",
+    "pendingIR": "hourglass_top",
+    "approvedIR": "thumb_up",
+    "refusedIR": "block",
+    "processingOrder": "shopping_cart",
+    "ordered": "local_shipping",
+    "received": "inventory_2",
+    "completed": "check_circle",
+    "cancelled": "cancel",
 };
 
 export const statusTypesToColor = {

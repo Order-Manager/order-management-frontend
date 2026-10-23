@@ -11,8 +11,14 @@ import { updateTypesToMessage, statusTypesToMessage, statusTypesToColor, updateT
 
 import { useToast } from "vue-toastification";
 
+import StatusBadge from '../components/StatusBadge.vue'
+import RelativeTime from '../components/RelativeTime.vue'
+
 
 export default {
+    components: {
+        StatusBadge, RelativeTime
+    },
     methods: {
         goToOrder(date) {
             this.$router.push(`/view/${date}`)
@@ -362,11 +368,11 @@ export default {
         <dl id="order-info">
             <div class="order-info">
                 <dt>Status</dt>
-                <dd :class="statusTypesToColor[order.status] ? statusTypesToColor[order.status] : 'red'">{{ statusTypesToMessage[order.status] ? statusTypesToMessage[order.status] : "Unknown Status" }}</dd>
+                <dd><StatusBadge :status="order.status" /></dd>
             </div>
             <div class="order-info">
                 <dt>Last update</dt>
-                <dd>{{ order.lastUpdate.toDate().toLocaleString("en-GB") }}</dd>
+                <dd><RelativeTime :value="order.lastUpdate" /></dd>
             </div>
             <div class="order-info">
                 <dt>Priority</dt>
@@ -382,7 +388,7 @@ export default {
             </div>
             <div class="order-info">
                 <dt>Created</dt>
-                <dd>{{ order.creationDate.toDate().toLocaleString("en-GB") }}</dd>
+                <dd><RelativeTime :value="order.creationDate" /></dd>
             </div>
         </dl>
 
@@ -435,7 +441,7 @@ export default {
                             <td class="col-total" data-label="Total">{{ Math.floor(1000 * parseFloat(item.price) * parseFloat(item.quantity)) / 1000 }}€</td>
                             <td class="col-actions">
                                 <button v-if="isReviewer() && getItemNextStatus(item) != 'none'" type="button"
-                                    v-on:click="updateItemStatus(index, getItemNextStatus(item), true)" class="alt-button">
+                                    v-on:click="updateItemStatus(index, getItemNextStatus(item), true)" class="mark-item">
                                     Mark as {{ getItemNextStatus(item) }}<span class="visually-hidden">: {{ item.name }}</span>
                                 </button>
                                 <span v-else class="order-item-status" :class="getItemStatusColor(item)">
@@ -457,17 +463,17 @@ export default {
         </div>
 
         <div id="approval-buttons">
-            <button type="button" class="alt-button" v-if="canEdit()" @click="toggleEditItems()">
+            <button type="button" v-if="canEdit()" @click="toggleEditItems()">
                 {{ editingItems ? "Save items" : "Edit items" }}
             </button>
 
-            <button type="button" class="green"
+            <button type="button" class="primary"
                 v-if="isAuthor() && ['draft'].includes(order.status)"
                 v-on:click="publishOrder()">
-                Create order
+                Submit order
             </button>
 
-            <button type="button" class="green"
+            <button type="button" class="primary"
                 v-if="isReviewer() && ['pending', 'refused', 'pendingIR', 'refusedIR'].includes(order.status)"
                 v-on:click="approvedByIR(false)">
                 Approve order
@@ -479,37 +485,37 @@ export default {
                     <option value="" disabled>Choose a reviewer</option>
                     <option v-for="reviewer in reviewers.filter(reviewer =>  isReviewRequestAllowed(reviewer.email))" :key="reviewer.id" :value="reviewer.email">{{ reviewer.email }}</option>
                 </select>
-                <button type="button" class="blue"
+                <button type="button"
                     v-on:click="requestReview()">
                     Send review request
                 </button>
             </div>
 
-            <button type="button"
+            <button type="button" class="primary"
                 v-if="isReviewer() && ['processingOrder'].includes(order.status)"
                 v-on:click="setOrderStatus('ordered')">
                 Mark as ordered
             </button>
 
-            <button type="button"
+            <button type="button" class="primary"
                 v-if="isReviewer() && ['ordered'].includes(order.status)"
                 v-on:click="setOrderStatus('received')">
                 Mark as delivered
             </button>
 
-            <button type="button"
+            <button type="button" class="primary"
                 v-if="isReviewer() && ['received'].includes(order.status)"
                 v-on:click="setOrderStatus('completed')">
                 Mark as completed
             </button>
 
-            <button type="button" class="red"
+            <button type="button" class="danger"
                 v-if="isReviewer() && ['pendingIR', 'processingOrder'].includes(order.status)"
                 v-on:click="rejectedByIR()">
                 Reject order
             </button>
 
-            <button type="button" class="red"
+            <button type="button" class="danger"
                 v-if="isAuthor() && ['draft', 'pendingIR'].includes(order.status)"
                 v-on:click="cancelOrder()">
                 Cancel order
@@ -535,7 +541,7 @@ export default {
 
                         <div class="update-header">
                             <p class="update-title">{{ update.author }}&nbsp;</p>
-                            <p class="update-date">commented on the {{ update.date.toDate().toLocaleString('en-GB') }}</p>
+                            <p class="update-date">commented <RelativeTime :value="update.date" /></p>
                         </div>
                         <p class="update-message">{{ update.message }}</p>
                     </div>
@@ -548,7 +554,7 @@ export default {
                     <div class="update-header">
                         <h3 class="update-title" :class="updateTypesToColor[update.type] ? updateTypesToColor[update.type] : 'red'">{{ updateTypesToMessage[update.type] }} to {{ update.message }}&nbsp;</h3>
                         <p class="update-author">by {{ update.author }},&nbsp;</p>
-                        <p class="update-date">{{ update.date.toDate().toLocaleString('en-GB') }}</p>
+                        <p class="update-date"><RelativeTime :value="update.date" /></p>
                     </div>
                 </div>
 
@@ -560,7 +566,7 @@ export default {
                     <div class="update-header">
                         <h3 class="update-title" :class="updateTypesToColor[update.type] ? updateTypesToColor[update.type] : 'red'">{{ updateTypesToMessage[update.type] }}&nbsp;</h3>
                         <p class="update-author">by {{ update.author }},&nbsp;</p>
-                        <p class="update-date">{{ update.date.toDate().toLocaleString('en-GB') }}</p>
+                        <p class="update-date"><RelativeTime :value="update.date" /></p>
                     </div>
                 </div>
             </li>
@@ -570,7 +576,7 @@ export default {
             <label for="comment-textarea">Add a comment</label>
             <div class="center-row small-gap">
                 <textarea id="comment-textarea" v-model="newComment" maxlength="1000" class="full-width"></textarea>
-                <button type="submit" class="alt-button send-button">
+                <button type="submit" class="send-button">
                     <span class="material-symbols-outlined" aria-hidden="true">send</span>
                     Send
                 </button>

@@ -136,7 +136,7 @@ export default {
             {{ supId.name }}
           </span>
         </div>
-        <button type="submit" class="alt-button save-btn">Save Changes</button>
+        <button type="submit" class="primary">Save changes</button>
       </form>
     </div>
     <div v-else>

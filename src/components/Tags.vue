@@ -55,7 +55,7 @@
             :key="type"
             type="button"
             class="tag-type-button"
-            :class="{ 'alt-button': activeType === type }"
+            :class="{ 'active-type': activeType === type }"
             :aria-pressed="activeType === type"
             @click="activeType = type"
         >{{ type }}</button>
@@ -65,8 +65,7 @@
             v-for="tag in tags.filter(tag => (tag.type === activeType) && (!tag.hidden))"
             :key="tag.id"
             type="button"
-            class="tag-button"
-            :class="{ 'alt-button': isSelected(tag) }"
+            class="chip"
             :aria-pressed="isSelected(tag)"
             @click="toggleTag(tag)"
         >
@@ -87,11 +86,10 @@
         gap: 0.5rem;
     }
 
-    .tag-button {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.25rem;
-        min-height: 2.75rem;
+    #tags-types-div > .active-type {
+        border-color: var(--link);
+        background-color: color-mix(in oklch, var(--link) 18%, var(--bg-light));
+        color: var(--text);
     }
 
     .tag-check {
