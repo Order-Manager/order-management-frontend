@@ -43,12 +43,16 @@ function state(index) {
             </span>
         </li>
     </ol>
+    <!-- Narrow screens show the dots only, with the current step spelled out once -->
+    <p class="progress-caption" aria-hidden="true">
+        {{ reached < 0 ? 'Not submitted yet' : `Step ${reached + 1} of ${STEPS.length}: ${STEPS[reached]}` }}
+    </p>
 </template>
 
 <style>
 .order-progress {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     margin: 0;
     padding: 0;
     list-style: none;
@@ -63,6 +67,31 @@ function state(index) {
     text-align: center;
     font-size: var(--font-sm);
     color: var(--text-muted);
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.progress-caption {
+    display: none;
+    margin: calc(-1 * var(--space-3)) 0 0 0;
+    text-align: center;
+    color: var(--text);
+    font-weight: 700;
+}
+
+@media (max-width: 30rem) {
+    .progress-label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+    }
+
+    .progress-caption {
+        display: block;
+    }
 }
 
 /* Connector to the previous step */

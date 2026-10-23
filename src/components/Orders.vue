@@ -23,6 +23,11 @@ export default {
     props: {
         orders: Array,
         caption: String,
+        // Students only see their own orders, so the column would always say the same thing
+        showRequester: {
+            type: Boolean,
+            default: true
+        },
         // The date shown is the one the list is sorted by
         dateField: {
             type: String,
@@ -41,7 +46,7 @@ export default {
             <colgroup>
                 <col class="w-status" />
                 <col />
-                <col class="w-requested" />
+                <col v-if="showRequester" class="w-requested" />
                 <col class="w-total" />
                 <col class="w-date" />
                 <col class="w-supplier" />
@@ -50,7 +55,7 @@ export default {
                 <tr>
                     <th scope="col">Status</th>
                     <th scope="col">Order</th>
-                    <th scope="col">Requested by</th>
+                    <th v-if="showRequester" scope="col">Requested by</th>
                     <th scope="col">Total</th>
                     <th scope="col">{{ dateField === 'lastUpdate' ? 'Last update' : 'Created' }}</th>
                     <th scope="col">Supplier</th>
@@ -69,7 +74,7 @@ export default {
                         <span class="item-count">{{ itemCount(order) }}</span>
                     </td>
                     <!-- Long emails break after the @ rather than mid-word -->
-                    <td class="col-requested">{{ (order.requestedBy || '').split('@')[0] }}<wbr>@{{ (order.requestedBy || '').split('@')[1] }}</td>
+                    <td v-if="showRequester" class="col-requested">{{ (order.requestedBy || '').split('@')[0] }}<wbr>@{{ (order.requestedBy || '').split('@')[1] }}</td>
                     <td class="col-total">{{ formatEuros(orderTotal(order.items)) }}</td>
                     <td class="col-date" :data-label="dateField === 'lastUpdate' ? 'Updated' : 'Created'"><RelativeTime :value="order[dateField]" /></td>
                     <td class="col-supplier">{{ order.supplier }}</td>

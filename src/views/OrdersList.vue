@@ -132,7 +132,7 @@ export default {
         <h2 v-if="group.title" :id="`group-${group.title}`" class="group-title">
           {{ group.title }} <span class="group-count">{{ group.orders.length }}</span>
         </h2>
-        <Orders :orders="group.orders" :dateField="sortBy" :caption="group.title || views.find(v => v.id === viewId).label" />
+        <Orders :orders="group.orders" :showRequester="isAdmin" :dateField="sortBy" :caption="group.title || views.find(v => v.id === viewId).label" />
       </section>
     </template>
 

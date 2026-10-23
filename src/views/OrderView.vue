@@ -768,6 +768,10 @@ export default {
     .summary-top {
         flex-direction: column;
     }
+
+    .summary-top h1 {
+        font-size: 1.4rem;
+    }
 }
 
 .order-item-status {
