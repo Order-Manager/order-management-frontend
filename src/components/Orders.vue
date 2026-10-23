@@ -48,12 +48,12 @@ export default {
                     :key="order.id"
                     @click="openFromRow(order.id, $event)"
                 >
-                    <td :class="statusTypesToColor[order.status] ? statusTypesToColor[order.status] : 'red'">{{ statusTypesToMessage[order.status] ? statusTypesToMessage[order.status] : "Unknown Status" }}</td>
-                    <td><router-link :to="`/view/${order.id}`">{{ order.title }}</router-link></td>
-                    <td>{{ order.requestedBy }}</td>
-                    <td>{{ order.lastUpdate.toDate().toLocaleString("en-GB") }}</td>
-                    <td>{{ order.creationDate.toDate().toLocaleString("en-GB") }}</td>
-                    <td>{{ order.supplier }}</td>
+                    <td class="col-status" :class="statusTypesToColor[order.status] ? statusTypesToColor[order.status] : 'red'">{{ statusTypesToMessage[order.status] ? statusTypesToMessage[order.status] : "Unknown Status" }}</td>
+                    <td class="col-title"><router-link :to="`/view/${order.id}`">{{ order.title }}</router-link></td>
+                    <td class="col-requested" data-label="By">{{ order.requestedBy }}</td>
+                    <td class="col-updated" data-label="Updated">{{ order.lastUpdate.toDate().toLocaleString("en-GB") }}</td>
+                    <td class="col-created" data-label="Created">{{ order.creationDate.toDate().toLocaleString("en-GB") }}</td>
+                    <td class="col-supplier" data-label="Supplier">{{ order.supplier }}</td>
                 </tr>
             </tbody>
         </table>
@@ -63,9 +63,60 @@ export default {
 
 <style>
 
-@media (max-width: 768px) {
-    .orderlist-table {
-        min-width: 768px;
+.orderlist-table .col-status {
+    white-space: nowrap;
+}
+
+/* Phones and tablets: each order becomes a card, title first */
+@media (max-width: 59.99rem) {
+    .orderlist-table thead {
+        display: block;
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
     }
+
+    .orderlist-table, .orderlist-table tbody, .orderlist-table td {
+        display: block;
+    }
+
+    .orderlist-table tbody tr.link-row {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        grid-template-areas:
+            "title title"
+            "status updated"
+            "requested requested"
+            "supplier created";
+        gap: 0.25rem 1rem;
+        padding: 0.875rem 1rem;
+    }
+
+    .orderlist-table td {
+        padding: 0;
+        text-align: left;
+        font-size: 0.95rem;
+    }
+
+    .orderlist-table td[data-label]::before {
+        content: attr(data-label) " ";
+        color: var(--text-muted);
+        font-weight: 400;
+    }
+
+    .orderlist-table .col-title {
+        grid-area: title;
+        font-size: 1.05rem;
+        color: var(--text);
+        margin-bottom: 0.25rem;
+    }
+
+    .orderlist-table .col-status { grid-area: status; }
+    .orderlist-table .col-updated { grid-area: updated; text-align: right; }
+    .orderlist-table .col-requested { grid-area: requested; overflow-wrap: anywhere; }
+    .orderlist-table .col-supplier { grid-area: supplier; overflow-wrap: anywhere; }
+    .orderlist-table .col-created { grid-area: created; text-align: right; }
 }
 </style>

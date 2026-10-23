@@ -3,14 +3,21 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" href="/orders/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+    <!-- Status bar colour = header background (--bg-dark) of each theme -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#e4e4e4" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#181818" />
+    <meta name="color-scheme" content="light dark" />
     <title>IFT Orders</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block" />
     <script>
       // Apply a theme picked in the top bar before first paint; otherwise the system setting applies
       try {
         const theme = localStorage.getItem('theme');
-        if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme;
+        if (theme === 'light' || theme === 'dark') {
+          document.documentElement.dataset.theme = theme;
+          document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.content = theme === 'dark' ? '#181818' : '#e4e4e4');
+        }
       } catch (e) {}
     </script>
   </head>

@@ -281,18 +281,18 @@
                             </thead>
                             <tbody>
                                 <tr v-for="(item, index) in items" :key="index">
-                                    <td>
+                                    <td class="col-type" data-label="Type">
                                         <select name="item-type" v-model="item.type" :aria-label="`Item ${index + 1} type`">
                                             <option value="item">Item</option>
                                             <option value="cart">Cart</option>
                                             <option value="stock">Stock</option>
                                         </select>
                                     </td>
-                                    <td><input type="text" name="name" v-model="item.name" required :aria-label="`Item ${index + 1} name`"></td>
-                                    <td><input type="url" name="link" v-model="item.link" required :aria-label="`Item ${index + 1} link`"></td>
-                                    <td><input type="number" name="quantity" v-model="item.quantity" min="1" required :aria-label="`Item ${index + 1} quantity`"></td>
-                                    <td><input type="number" name="price" min="0.000" max="10000.00" step="0.001" v-model="item.price" required :aria-label="`Item ${index + 1} unit price in euros`"/></td>
-                                    <td>
+                                    <td data-label="Name"><input type="text" name="name" v-model="item.name" required :aria-label="`Item ${index + 1} name`"></td>
+                                    <td data-label="Link"><input type="url" name="link" v-model="item.link" required :aria-label="`Item ${index + 1} link`"></td>
+                                    <td data-label="Quantity"><input type="number" inputmode="numeric" name="quantity" v-model="item.quantity" min="1" required :aria-label="`Item ${index + 1} quantity`"></td>
+                                    <td data-label="Unit price (€)"><input type="number" inputmode="decimal" name="price" min="0.000" max="10000.00" step="0.001" v-model="item.price" required :aria-label="`Item ${index + 1} unit price in euros`"/></td>
+                                    <td class="col-actions">
                                         <button type="button" class="icon-button red" @click="removeItem(index)" :aria-label="`Remove item ${index + 1}`" title="Remove item">
                                             <span class="material-symbols-outlined" aria-hidden="true">delete</span>
                                         </button>
@@ -314,9 +314,9 @@
             </fieldset>
             <div class="order-form-category">
                 <label class="category-label" for="comment">Comment</label>
-                <textarea id="comment" name="comment" v-model="comment"></textarea>
+                <textarea id="comment" name="comment" v-model="comment" rows="3"></textarea>
             </div>
-            <div class="center-row medium-gap">
+            <div class="center-row medium-gap form-actions">
                 <button type="submit" class="alt-button" @click="isDraft = false">Create order</button>
                 <button type="button" v-on:click="saveAsDraft(user.email, user.uid)">Save as draft</button>
             </div>
@@ -364,8 +364,27 @@
             min-width: 0;
         }
 
-        .items-table {
-            min-width: 768px;
+        #title, #selected-tags, #comment {
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        #supplier {
+            width: 100%;
+        }
+
+        .order-form-category .flex.center-row {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .form-actions {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        #priority-div {
+            flex-wrap: wrap;
         }
     }
 
@@ -424,6 +443,44 @@
     .add-item {
         font-size: 2rem;
         margin: 0.5rem;
+    }
+
+    /* Phones and tablets: each item becomes a card with its labels above the fields */
+    @media (max-width: 59.99rem) {
+        .items-table thead {
+            display: block;
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+            clip: rect(0 0 0 0);
+        }
+
+        .items-table, .items-table tbody, .items-table tr, .items-table td {
+            display: block;
+        }
+
+        .items-table tbody tr {
+            padding: 0.75rem 1rem;
+        }
+
+        .items-table td {
+            padding: 0.25rem 0;
+            text-align: left;
+        }
+
+        .items-table td[data-label]::before {
+            display: block;
+            content: attr(data-label);
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-bottom: 0.15rem;
+        }
+
+        .items-table .col-actions {
+            display: flex;
+            justify-content: flex-end;
+        }
     }
 
 </style>

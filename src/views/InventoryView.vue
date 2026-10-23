@@ -225,9 +225,11 @@ export default {
   margin-top: 1rem;
   transition: background 0.2s;
 }
+@media (hover: hover) and (pointer: fine) {
 .save-btn:hover {
   background: var(--color-tertiary);
   color: var(--color-text-primary);
   border: 2px solid var(--color-text-primary);
+}
 }
 </style>

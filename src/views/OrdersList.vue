@@ -194,8 +194,8 @@ export default {
 }
 
 #orders-search-filter {
-  flex-grow: 1;
-  width: 40%;
+  flex: 1 1 12rem;
+  min-width: 0;
 }
 
 #orders-status-filter {
@@ -205,16 +205,27 @@ export default {
 }
 
 #orders-sort {
-  width: 12rem;
+  flex: 0 1 14rem;
+  min-width: 0;
   padding: 0.5rem;
   border-radius: 8px;
+}
+
+@media (max-width: 47.99rem) {
+  #top-controls {
+    gap: 0.75rem;
+  }
+
+  #orders-sort {
+    flex: 1 1 10rem;
+  }
 }
 
 
 #orders-status-filter {
   position: relative;
-  flex-grow: 1;
-  min-width: 16rem;
+  flex: 1 1 12rem;
+  min-width: 0;
 }
 
 #orders-status-filter summary {

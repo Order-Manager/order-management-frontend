@@ -20,17 +20,18 @@ import Footer from './components/Footer.vue'
 #page{
   position: relative;
   min-height: calc(100vh - 4rem);
+  min-height: calc(100dvh - 4rem - env(safe-area-inset-top, 0px));
 }
 
 #main {
   display: block;
-  padding: 2rem 2rem 6rem 2rem;
+  padding: 2rem max(2rem, env(safe-area-inset-right, 0px)) 6rem max(2rem, env(safe-area-inset-left, 0px));
   max-width: 100%;
 }
 
 @media (max-width: 1024px) {
   #main {
-    padding: 1rem 0.5rem 6rem 0.5rem;
+    padding: 1rem max(1rem, env(safe-area-inset-right, 0px)) 6rem max(1rem, env(safe-area-inset-left, 0px));
   }
 }
 

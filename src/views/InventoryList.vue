@@ -135,6 +135,7 @@ export default {
 
 .category-card {
   display: block;
+  box-sizing: border-box;
   color: inherit;
   text-decoration: none;
   border: 1px solid var(--border);
@@ -147,8 +148,10 @@ export default {
   transition: box-shadow 0.2s;
 }
 
+@media (hover: hover) and (pointer: fine) {
 .category-card:hover {
   box-shadow: 0 2px 8px #aaa;
+}
 }
 
 .category-card img {

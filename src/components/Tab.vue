@@ -1,22 +1,11 @@
 <script>
 
-import { useCurrentUser, useFirestore, useDocument } from 'vuefire';
-import { doc } from 'firebase/firestore';
-
-import { computed } from 'vue';
-
+// Phone menu: drops down under the top bar with the section links and the account
 export default {
     emits: ['close'],
-    setup() {
-        const currentUser = useCurrentUser();
-        const db = useFirestore();
-
-        const userData = useDocument(computed(() => currentUser.value && doc(db, 'admins', currentUser.value.uid)));
-        const isAdmin = computed(() => !!(userData.value && userData.value.isIR));
-
-        return {
-            isAdmin
-        }
+    props: {
+        links: Array,
+        email: String,
     },
     methods: {
         onKeydown(event) {
@@ -39,9 +28,15 @@ export default {
     <div>
         <div id="page-mask" @click="$emit('close', false)"></div>
         <nav id="side-tab" aria-label="Sections">
-            <router-link to="/" @click="$emit('close', false)">Orders</router-link>
-            <router-link to="/suppliers" v-if="isAdmin" @click="$emit('close', false)">Suppliers</router-link>
-            <router-link to="/tags" v-if="isAdmin" @click="$emit('close', false)">Tags</router-link>
+            <ul>
+                <li v-for="link in links" :key="link.to">
+                    <router-link :to="link.to" @click="$emit('close', false)">{{ link.label }}</router-link>
+                </li>
+            </ul>
+            <div id="side-tab-account">
+                <p>Signed in as <strong>{{ email }}</strong></p>
+                <router-link to="/signout" class="button-link" @click="$emit('close', false)">Sign out</router-link>
+            </div>
         </nav>
     </div>
 </template>
@@ -51,39 +46,60 @@ export default {
 
 #side-tab {
     position: fixed;
-    top: 4rem;
-    width: 20rem;
-    max-width: 85vw;
+    top: calc(4rem + env(safe-area-inset-top, 0px));
     left: 0;
-    height: 100%;
-    background-color: var(--color-secondary);
+    right: 0;
+    max-height: calc(100dvh - 4rem - env(safe-area-inset-top, 0px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background-color: var(--bg);
+    border-bottom: 1px solid var(--border-muted);
     z-index: 100;
-    padding: 2rem 0;
-
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
+    padding: 0.5rem 1rem calc(1rem + env(safe-area-inset-bottom, 0px)) 1rem;
 }
 
-#side-tab a {
-    padding: 1rem 0.5rem;
+#side-tab ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+#side-tab li a {
+    display: flex;
+    align-items: center;
+    min-height: 3rem;
+    padding: 0 0.5rem;
     font-size: 1.2rem;
-    font-weight: 500;
-    margin: 0 3rem 0 1rem;
-    text-align: left;
     color: var(--text);
     text-decoration: none;
     border-radius: 8px;
 }
 
-#side-tab a:hover, #side-tab a.router-link-exact-active {
+#side-tab li a.router-link-exact-active {
     text-decoration: underline;
+    text-decoration-color: var(--link);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 0.4em;
 }
 
+#side-tab-account {
+    margin-top: 0.5rem;
+    padding: 1rem 0.5rem 0 0.5rem;
+    border-top: 1px solid var(--border-muted);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+#side-tab-account p {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
 
 #page-mask {
     position: fixed;
-    top: 4rem;
+    top: calc(4rem + env(safe-area-inset-top, 0px));
     left: 0;
     right: 0;
     bottom: 0;

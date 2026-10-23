@@ -101,6 +101,11 @@
 
 html {
   font-size: 100%;
+  /* Phones: no grey flash on tap, no font inflation in landscape */
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  /* Keep focused or scrolled-to elements clear of the sticky top bar */
+  scroll-padding-top: calc(5rem + env(safe-area-inset-top, 0px));
 }
 
 body {
@@ -166,13 +171,53 @@ input, select, button, textarea {
   color: var(--text);
 }
 
-button:hover, select:hover, textarea:hover {
+button, select, .button-link {
   cursor: pointer;
-  border-color: var(--border-hover);
 }
 
-input:hover {
-  cursor: text;
+/* Controls fire immediately on tap and don't select their label on long-press */
+button, a, select, summary, .button-link {
+  touch-action: manipulation;
+}
+
+button, .button-link, summary {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Comfortable tap targets for every control */
+button, select, input:not([type="checkbox"]):not([type="radio"]), .button-link {
+  min-height: 2.75rem;
+  box-sizing: border-box;
+}
+
+/* Press feedback on touch and mouse alike */
+button:active, .button-link:active {
+  transform: scale(0.97);
+}
+
+button, .button-link {
+  transition: border-color 0.25s, transform 100ms ease-out;
+}
+
+/* Hover only where a real pointer can hover, so states don't stick after a tap */
+@media (hover: hover) and (pointer: fine) {
+  button:hover, select:hover, textarea:hover, .button-link:hover, .icon-button:hover {
+    border-color: var(--border-hover);
+  }
+
+  .data-table tr.link-row:hover {
+    background-color: var(--bg);
+  }
+
+  .data-table tr.link-row:hover a {
+    text-decoration: underline;
+  }
+
+  .table-row:hover {
+    border: 3px solid var(--primary);
+    border-radius: 0.5rem;
+  }
 }
 
 button:active, input:active, select:active, textarea:active,
@@ -180,7 +225,7 @@ input:focus, select:focus, textarea:focus {
   border-color: var(--color-text-primary);
 }
 
-.alt-button:hover, .alt-button:active, .alt-button:focus {
+.alt-button:active, .alt-button:focus {
   border-color: var(--border-hover);
 }
 
@@ -219,10 +264,6 @@ input[type="checkbox"], input[type="radio"] {
   text-decoration: none;
 }
 
-.button-link:hover {
-  border-color: var(--border-hover);
-}
-
 /* Icon-only buttons: the icon is decorative, the button carries an aria-label */
 .icon-button {
   display: inline-flex;
@@ -237,16 +278,13 @@ input[type="checkbox"], input[type="radio"] {
   color: var(--text);
 }
 
-.icon-button:hover {
-  border-color: var(--border);
-}
-
 .icon-button.red {
   color: var(--red) !important;
 }
 
 .visually-hidden {
   position: absolute !important;
+  left: 0;
   width: 1px;
   height: 1px;
   margin: -1px;
@@ -373,7 +411,7 @@ input[type="checkbox"], input[type="radio"] {
   padding: 0.75rem 0.5rem;
   text-align: center;
   vertical-align: middle;
-  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .data-table th {
@@ -394,17 +432,13 @@ input[type="checkbox"], input[type="radio"] {
   cursor: pointer;
 }
 
-.data-table tr.link-row:hover, .data-table tr.link-row:focus-within {
+.data-table tr.link-row:focus-within {
   background-color: var(--bg);
 }
 
 .data-table tr.link-row a {
   color: inherit;
   text-decoration: none;
-}
-
-.data-table tr.link-row:hover a {
-  text-decoration: underline;
 }
 
 .data-table input, .data-table select {
@@ -468,7 +502,7 @@ input[type="checkbox"], input[type="radio"] {
   }
 }
 
-.table-row:hover, .table-row:focus-within {
+.table-row:focus-within {
   border: 3px solid var(--primary);
   border-radius: 0.5rem;
   cursor: pointer;

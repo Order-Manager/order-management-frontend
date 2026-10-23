@@ -21,10 +21,11 @@ footer {
     display: flex;
     justify-content: center;
     flex-direction: column;
-    width: calc(100% - 4rem);
+    box-sizing: border-box;
+    width: 100%;
     background-color: var(--color-primary);
-    padding: 0 2rem;
-    height: 4rem;
+    padding: 0 2rem env(safe-area-inset-bottom, 0px) 2rem;
+    min-height: 4rem;
 }
 
 </style>

@@ -411,12 +411,12 @@ export default {
                 <tbody>
                     <tr v-for="(item, index) in order.items" :key="index">
                         <template v-if="editingItems">
-                            <td><input type="text" v-model="item.name" required :aria-label="`Item ${index + 1} name`"></td>
-                            <td><input type="url" v-model="item.link" required :aria-label="`Item ${index + 1} link`"></td>
-                            <td><input type="number" v-model="item.quantity" required min="1" :aria-label="`Item ${index + 1} quantity`"></td>
-                            <td><input type="number" v-model="item.price" min="0.00" max="10000.00" step="0.001" required :aria-label="`Item ${index + 1} unit price in euros`"></td>
-                            <td>{{ Math.floor(1000 * parseFloat(item.price) * parseFloat(item.quantity)) / 1000 }}€</td>
-                            <td>
+                            <td class="col-name" data-label="Name"><input type="text" v-model="item.name" required :aria-label="`Item ${index + 1} name`"></td>
+                            <td class="col-link" data-label="Link"><input type="url" v-model="item.link" required :aria-label="`Item ${index + 1} link`"></td>
+                            <td class="col-qty" data-label="Quantity"><input type="number" inputmode="numeric" v-model="item.quantity" required min="1" :aria-label="`Item ${index + 1} quantity`"></td>
+                            <td class="col-price" data-label="Unit price (€)"><input type="number" inputmode="decimal" v-model="item.price" min="0.00" max="10000.00" step="0.001" required :aria-label="`Item ${index + 1} unit price in euros`"></td>
+                            <td class="col-total" data-label="Total">{{ Math.floor(1000 * parseFloat(item.price) * parseFloat(item.quantity)) / 1000 }}€</td>
+                            <td class="col-actions">
                                 <div class="center-both">
                                     <button type="button" class="icon-button red" @click="deleteItem(index)" :aria-label="`Delete item ${index + 1}`" title="Delete item">
                                         <span class="material-symbols-outlined" aria-hidden="true">delete</span>
@@ -428,12 +428,12 @@ export default {
                             </td>
                         </template>
                         <template v-else>
-                            <td>{{ item.name }}</td>
-                            <td class="item-link"><a :href="item.link" target="_blank" rel="noopener">{{ item.link }}<span class="visually-hidden"> (opens in a new tab)</span></a></td>
-                            <td>{{ item.quantity }}</td>
-                            <td>{{ item.price }}€</td>
-                            <td>{{ Math.floor(1000 * parseFloat(item.price) * parseFloat(item.quantity)) / 1000 }}€</td>
-                            <td>
+                            <td class="col-name">{{ item.name }}</td>
+                            <td class="col-link item-link"><a :href="item.link" target="_blank" rel="noopener">{{ item.link }}<span class="visually-hidden"> (opens in a new tab)</span></a></td>
+                            <td class="col-qty" data-label="Quantity">{{ item.quantity }}</td>
+                            <td class="col-price" data-label="Unit price">{{ item.price }}€</td>
+                            <td class="col-total" data-label="Total">{{ Math.floor(1000 * parseFloat(item.price) * parseFloat(item.quantity)) / 1000 }}€</td>
+                            <td class="col-actions">
                                 <button v-if="isReviewer() && getItemNextStatus(item) != 'none'" type="button"
                                     v-on:click="updateItemStatus(index, getItemNextStatus(item), true)" class="alt-button">
                                     Mark as {{ getItemNextStatus(item) }}<span class="visually-hidden">: {{ item.name }}</span>
@@ -655,9 +655,65 @@ export default {
     max-width: 8rem;
 }
 
-@media (max-width: 768px) {
-    .orderview-table {
-        min-width: 768px;
+/* Phones and tablets: each item becomes a card */
+@media (max-width: 59.99rem) {
+    .orderview-table thead {
+        display: block;
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+    }
+
+    .orderview-table, .orderview-table tbody, .orderview-table tr, .orderview-table td {
+        display: block;
+    }
+
+    .orderview-table tbody tr {
+        padding: 0.75rem 1rem;
+    }
+
+    .orderview-table td {
+        padding: 0.2rem 0;
+        text-align: left;
+    }
+
+    .orderview-table td[data-label]::before {
+        content: attr(data-label) ": ";
+        color: var(--text-muted);
+        font-weight: 400;
+    }
+
+    /* In edit mode the label sits above its field */
+    .orderview-table td[data-label]:has(input)::before {
+        display: block;
+        content: attr(data-label);
+    }
+
+    .orderview-table .col-name {
+        font-size: 1.05rem;
+        color: var(--text);
+    }
+
+    .orderview-table input[type="number"] {
+        max-width: none;
+    }
+
+    .orderview-table .col-actions {
+        padding-top: 0.5rem;
+    }
+
+    .orderview-table .col-actions button {
+        width: 100%;
+    }
+
+    .orderview-table .col-actions .center-both {
+        justify-content: flex-start;
+    }
+
+    .order-info dt {
+        min-width: 7rem;
     }
 }
 
@@ -684,10 +740,22 @@ export default {
 
 #approval-buttons {
     display: flex;
+    flex-wrap: wrap;
     width: 100%;
-    /* justify-content: space-between; */
-    gap: 2rem;
+    gap: 0.75rem 1rem;
     padding-top: 2rem;
+}
+
+#approval-buttons > .center-row {
+    flex-wrap: wrap;
+}
+
+@media (max-width: 47.99rem) {
+    #approval-buttons > button,
+    #approval-buttons > .center-row,
+    #approval-buttons > .center-row > * {
+        flex: 1 1 100%;
+    }
 }
 
 
@@ -817,6 +885,13 @@ export default {
 
 #comment-div > .center-row {
     align-items: flex-end;
+}
+
+@media (max-width: 47.99rem) {
+    #comment-div > .center-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
 }
 
 #comment-div textarea {
