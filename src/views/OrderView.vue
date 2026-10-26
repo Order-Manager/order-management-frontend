@@ -528,7 +528,7 @@ export default {
                         </template>
                         <template v-else>
                             <td class="col-name">{{ item.name }}</td>
-                            <td class="col-link item-link"><a :href="item.link" target="_blank" rel="noopener">{{ item.link }}<span class="visually-hidden"> (opens in a new tab)</span></a></td>
+                            <td class="col-link item-link"><a :href="item.link" :title="item.link" target="_blank" rel="noopener">{{ item.link }}<span class="visually-hidden"> (opens in a new tab)</span></a></td>
                             <td class="col-qty" data-label="Quantity">{{ item.quantity }}</td>
                             <td class="col-price" data-label="Unit price">{{ formatEuros(parseFloat(item.price)) }}</td>
                             <td class="col-total" data-label="Total">{{ formatEuros(orderTotal([item])) }}</td>
@@ -1038,7 +1038,8 @@ export default {
     background-color: var(--bg);
     border-radius: 0.5rem;
     white-space: pre-wrap;
-    overflow: hidden;
+    /* Long URLs in comments wrap instead of being cut off */
+    overflow-wrap: anywhere;
 }
 
 .update-comment .update-header {
@@ -1084,11 +1085,21 @@ export default {
     min-height: 2.75rem;
 }
 
+/* Long URLs are cropped with an ellipsis; the full address is in the link's tooltip */
 .item-link a {
     display: block;
     text-overflow: ellipsis;
     white-space: nowrap;
     overflow: hidden;
+}
+
+/* In the desktop table the link cell must not grow to fit the URL: max-width 0 plus a share of the
+   width lets the ellipsis kick in (below 60rem the items are cards and the cell is already bounded) */
+@media (min-width: 60rem) {
+    .orderview-table .col-link {
+        width: 30%;
+        max-width: 0;
+    }
 }
 
 
