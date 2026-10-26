@@ -7,7 +7,8 @@ const props = defineProps({
 
 const STEPS = ['Submitted', 'Approved', 'Ordered', 'Delivered', 'Picked up']
 
-// Index of the last step reached for each status
+// Index of the last step reached for each status: that step and the ones before it get a tick,
+// and the step after it is the one in progress
 const REACHED = {
     draft: -1,
     pendingIR: 0,
@@ -21,10 +22,16 @@ const REACHED = {
 const reached = computed(() => REACHED[props.status] ?? -1)
 
 function state(index) {
-    if (index < reached.value || props.status === 'completed') return 'done'
-    if (index === reached.value) return 'current'
+    if (index <= reached.value) return 'done'
+    if (index === reached.value + 1) return 'next'
     return 'upcoming'
 }
+
+const caption = computed(() => {
+    if (reached.value < 0) return `Not submitted yet · next: ${STEPS[0]}`
+    if (reached.value === STEPS.length - 1) return `${STEPS[reached.value]} · all done`
+    return `${STEPS[reached.value]} · next: ${STEPS[reached.value + 1]}`
+})
 </script>
 
 <template>
@@ -33,20 +40,18 @@ function state(index) {
             v-for="(label, index) in STEPS"
             :key="label"
             :class="state(index)"
-            :aria-current="state(index) === 'current' ? 'step' : null"
+            :aria-current="state(index) === 'next' ? 'step' : null"
         >
             <span class="progress-dot" aria-hidden="true">
                 <span class="material-symbols-outlined" v-if="state(index) === 'done'">check</span>
             </span>
             <span class="progress-label">
-                {{ label }}<span class="visually-hidden">{{ state(index) === 'done' ? ' (done)' : state(index) === 'current' ? ' (current step)' : '' }}</span>
+                {{ label }}<span class="visually-hidden">{{ state(index) === 'done' ? ' (done)' : state(index) === 'next' ? ' (next step)' : '' }}</span>
             </span>
         </li>
     </ol>
-    <!-- Narrow screens show the dots only, with the current step spelled out once -->
-    <p class="progress-caption" aria-hidden="true">
-        {{ reached < 0 ? 'Not submitted yet' : `Step ${reached + 1} of ${STEPS.length}: ${STEPS[reached]}` }}
-    </p>
+    <!-- Narrow screens show the dots only, with where the order stands spelled out once -->
+    <p class="progress-caption" aria-hidden="true">{{ caption }}</p>
 </template>
 
 <style>
@@ -105,8 +110,13 @@ function state(index) {
     background-color: var(--border-muted);
 }
 
-.order-progress li.done + li::before {
+/* Solid between reached steps, dashed teal into the step in progress */
+.order-progress li.done + li.done::before {
     background-color: var(--link);
+}
+
+.order-progress li.next::before {
+    background: repeating-linear-gradient(90deg, var(--link) 0 6px, transparent 6px 10px);
 }
 
 .progress-dot {
@@ -133,17 +143,17 @@ function state(index) {
     color: var(--bg-dark);
 }
 
-.order-progress li.current .progress-dot {
+.order-progress li.next .progress-dot {
     border-color: var(--link);
     box-shadow: 0 0 0 4px color-mix(in oklch, var(--link) 30%, transparent);
 }
 
-.order-progress li.current,
+.order-progress li.next,
 .order-progress li.done {
     color: var(--text);
 }
 
-.order-progress li.current {
+.order-progress li.next {
     font-weight: 700;
 }
 </style>
