@@ -70,7 +70,9 @@ service cloud.firestore {
         && request.resource.data.requestedBy == request.auth.token.email
         && request.resource.data.requestedById == request.auth.uid
         && request.resource.data.status in ['draft', 'pendingIR']
-        && request.resource.data.updates == [];
+        && request.resource.data.updates == []
+        // An order created archived would never reach the reviewers
+        && request.resource.data.get('archived', false) == false;
 
       allow update: if (isAdmin()
           && !changedKeys().hasAny(['requestedBy', 'requestedById', 'creationDate']))

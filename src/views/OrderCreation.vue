@@ -91,7 +91,8 @@
                         comment: this.comment,
                         updates: [],
                         tags: this.selectedTags.map(tag => tag.id),
-                        priority: this.priority
+                        priority: this.priority,
+                        archived: false
                     });
 
                     try { localStorage.setItem('orderTipsSeen', '1') } catch (e) {}

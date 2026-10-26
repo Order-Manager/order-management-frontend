@@ -137,6 +137,11 @@ describe('orders: creating', () => {
         await assertFails(addDoc(collection(db(STUDENT), 'orders'), order(OTHER, { updates: [] })))
     })
 
+    test('cannot create an order already archived', async () => {
+        await assertSucceeds(addDoc(collection(db(STUDENT), 'orders'), order(STUDENT, { updates: [], archived: false })))
+        await assertFails(addDoc(collection(db(STUDENT), 'orders'), order(STUDENT, { updates: [], archived: true })))
+    })
+
     test('cannot pre-fill the history', async () => {
         await assertFails(addDoc(collection(db(STUDENT), 'orders'), order(STUDENT)))
     })
@@ -191,6 +196,21 @@ describe('orders: owner updates', () => {
         }))
     })
 
+    test('cannot archive or unarchive own order', async () => {
+        await assertFails(updateDoc(doc(db(STUDENT), 'orders/o1'), { archived: true }))
+        await seed('orders/o2', order(STUDENT, { archived: true }))
+        await assertFails(updateDoc(doc(db(STUDENT), 'orders/o2'), { archived: false }))
+    })
+
+    test('can read own archived orders', async () => {
+        await seed('orders/o2', order(STUDENT, { archived: true }))
+        await assertSucceeds(getDocs(query(
+            collection(db(STUDENT), 'orders'),
+            where('requestedBy', '==', STUDENT.email),
+            where('archived', '==', true),
+        )))
+    })
+
     test('cannot transfer ownership', async () => {
         await assertFails(updateDoc(doc(db(STUDENT), 'orders/o1'), { requestedBy: OTHER.email }))
     })
@@ -213,6 +233,12 @@ describe('orders: admin updates', () => {
         await assertSucceeds(updateDoc(doc(db(ADMIN), 'orders/o1'), { status: 'approvedIR', reviewIR: true, reviewIRBy: ADMIN.email }))
         await assertSucceeds(updateDoc(doc(db(ADMIN), 'orders/o1'), { lastReviewRequestTo: OTHER.email, lastReviewRequestDate: new Date() }))
         await assertSucceeds(updateDoc(doc(db(ADMIN), 'orders/o1'), { items: [], lastItemsUpdatedBy: ADMIN.email }))
+    })
+
+    test('archive and unarchive, keeping the dates as they were', async () => {
+        const archive = { archived: true, archivedAt: new Date(), archivedBy: ADMIN.email, lastUpdate: Timestamp.now() }
+        await assertSucceeds(updateDoc(doc(db(ADMIN), 'orders/o1'), archive))
+        await assertSucceeds(updateDoc(doc(db(ADMIN), 'orders/o1'), { archived: false, lastUpdate: Timestamp.now() }))
     })
 
     test('cannot rewrite the owner', async () => {

@@ -2,7 +2,7 @@
 import { computed, ref } from "vue";
 
 import { useDocument, useFirestore, useCurrentUser, useCollection } from 'vuefire'
-import { doc, updateDoc, collection, arrayUnion } from "firebase/firestore";
+import { doc, updateDoc, collection, arrayUnion, Timestamp } from "firebase/firestore";
 
 
 import { useRoute } from 'vue-router'
@@ -77,6 +77,26 @@ export default {
                 this.showSuccess(`Order rejected. ${this.order.requestedBy} will get your reason by email.`)
             } catch (error) {
                 this.showError("Could not reject the order: " + error.message)
+            } finally {
+                this.busy = false
+            }
+        },
+        // Archiving notifies nobody. lastUpdate moves by 1 ms so the update function, which stamps
+        // "now" only when lastUpdate is unchanged, leaves the order's date as it was.
+        async setArchived(archived) {
+            const db = useFirestore()
+            const orderRef = doc(db, 'orders', this.order_id)
+            const previous = this.order.lastUpdate
+            this.busy = true
+            try {
+                await updateDoc(orderRef, {
+                    archived,
+                    ...(archived ? { archivedAt: new Date(), archivedBy: this.currentUser.email } : {}),
+                    lastUpdate: Timestamp.fromMillis(previous.toMillis() + 1),
+                })
+                this.showSuccess(archived ? "Order archived. It now only appears under Archived." : "Order restored to the main lists.")
+            } catch (error) {
+                this.showError("Could not change the archive state: " + error.message)
             } finally {
                 this.busy = false
             }
@@ -440,6 +460,10 @@ export default {
                 <span class="material-symbols-outlined" aria-hidden="true">{{ isEnded() ? 'info' : 'arrow_forward' }}</span>
                 {{ nextStep() }}
             </p>
+            <p v-if="order.archived" class="archived-note">
+                <span class="material-symbols-outlined" aria-hidden="true">inventory_2</span>
+                <span>{{ order.archivedAt ? 'Archived ' : 'Archived' }}<RelativeTime v-if="order.archivedAt" :value="order.archivedAt" />. It only appears under Archived in the order list.</span>
+            </p>
             <dl class="summary-facts">
                 <div>
                     <dt>Supplier</dt>
@@ -582,6 +606,13 @@ export default {
                 v-if="isReviewer() && ['pendingIR', 'processingOrder'].includes(order.status)"
                 v-on:click="openRejectDialog()">
                 Reject order
+            </button>
+
+            <button type="button" v-if="isReviewer() && !order.archived" :disabled="busy" @click="setArchived(true)">
+                Archive
+            </button>
+            <button type="button" v-if="isReviewer() && order.archived" :disabled="busy" @click="setArchived(false)">
+                Unarchive
             </button>
 
             <button type="button" class="danger"
@@ -732,6 +763,21 @@ export default {
 }
 
 .next-step.ended .material-symbols-outlined {
+    color: var(--text-muted);
+}
+
+.archived-note {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    margin: calc(-1 * var(--space-3)) 0 0 0;
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius);
+    border: 1px dashed var(--border);
+    color: var(--text);
+}
+
+.archived-note .material-symbols-outlined {
     color: var(--text-muted);
 }
 

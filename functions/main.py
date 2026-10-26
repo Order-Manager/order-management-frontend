@@ -47,7 +47,8 @@ def addUpdatesOnCreation(event: firestore_fn.Event[firestore_fn.DocumentSnapshot
             "message": comment,
         })
 
-    event.data.reference.update({"updates": updates})
+    # Every order carries "archived" so the lists can filter on it in the query
+    event.data.reference.update({"updates": updates, "archived": False})
 
 
 @firestore_fn.on_document_updated(document="orders/{orderId}", region=REGION)

@@ -48,7 +48,12 @@ for (const user of [ADMIN, STUDENT, OTHER]) {
     const res = await fetch(`${AUTH}/identitytoolkit.googleapis.com/v1/projects/${PROJECT}/accounts`, {
         method: 'POST', headers, body: JSON.stringify({ localId: user.uid, email: user.email, emailVerified: true }),
     })
-    if (!res.ok && !(await res.text()).includes('DUPLICATE')) throw new Error(`user ${user.email}`)
+    if (!res.ok) {
+        const text = await res.text()
+        // Signing in before seeding creates the account under another uid; reads still work by email
+        if (text.includes('EMAIL_EXISTS')) console.warn(`${user.email} already exists with another uid; their own-order writes may be refused`)
+        else if (!text.includes('DUPLICATE')) throw new Error(`user ${user.email}: ${text}`)
+    }
 }
 await setDoc(`admins/${ADMIN.uid}`, { email: ADMIN.email, isIR: true })
 
@@ -122,6 +127,17 @@ const orders = [
         id: 'cancelled', owner: STUDENT, status: 'cancelled', title: 'Duplicate of servo order', supplier: 'RS Components', tags: ['octon'], priority: 'low', created: 3,
         items: [item('MG996R servo motor', 'https://fr.rs-online.com/web/p/servo-motors/123', 6, 9.9)], cancelledBy: STUDENT.email,
         updates: [created(3), event('order-cancelled', 3, STUDENT.email)],
+    },
+    // Untouched for over 6 months: what scripts/archive-orders.mjs archives
+    {
+        id: 'stale-pending', owner: OTHER, status: 'pendingIR', title: 'Laser cutter lens (never reviewed)', supplier: 'RS Components', tags: ['fablab'], priority: 'low', created: 240,
+        items: [item('CO2 laser lens 20mm', 'https://fr.rs-online.com/web/p/lenses/111', 1, 35)],
+        updates: [created(240)],
+    },
+    {
+        id: 'stale-refused', owner: STUDENT, status: 'refusedIR', title: 'Old headphones request', supplier: 'Amazon', tags: ['bde'], priority: 'low', created: 220,
+        items: [item('Headphones', 'https://www.amazon.fr/dp/B000000009', 1, 59)],
+        updates: [created(220), event('review-ir-refused', 210, ADMIN.email)],
     },
     {
         id: 'other-pending', owner: OTHER, status: 'pendingIR', title: 'Stepper drivers', supplier: 'Mouser', tags: ['marblebot', 'robotics-club'], priority: 'medium', created: 0,

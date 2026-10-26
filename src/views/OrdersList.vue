@@ -33,6 +33,8 @@ export default {
       { id: "completed", label: "Completed", statuses: ["completed"], paged: true },
       { id: "closed", label: "Rejected & cancelled", statuses: ["refusedIR", "cancelled"], paged: true },
       { id: "all", label: "All", statuses: ["draft", "pendingIR", "processingOrder", "ordered", "received", "completed", "refusedIR", "cancelled"], paged: true },
+      // Archived orders, whatever their status, live only here
+      { id: "archived", label: "Archived", statuses: null, archived: true, paged: true },
     ]);
     const viewId = ref("active");
     const view = computed(() => views.value.find(v => v.id === viewId.value));
@@ -46,7 +48,8 @@ export default {
 
     const orders = useCollection(
       computed(() => {
-        const constraints = [where("status", "in", view.value.statuses)];
+        const constraints = [where("archived", "==", !!view.value.archived)];
+        if (view.value.statuses) constraints.push(where("status", "in", view.value.statuses));
         if (!isAdmin.value) constraints.unshift(where("requestedBy", "==", currentUser.value.email));
         constraints.push(orderBy(sortBy.value, "desc"));
         // Active orders are few; history is paged
