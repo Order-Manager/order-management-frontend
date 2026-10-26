@@ -70,7 +70,7 @@ export default {
                 >
                     <td class="col-status"><StatusBadge :status="order.status" /></td>
                     <td class="col-title">
-                        <router-link :to="`/view/${order.id}`">{{ order.title }}</router-link>
+                        <router-link :to="`/view/${order.id}`">{{ order.title || '(Untitled order)' }}</router-link>
                         <span class="item-count">{{ itemCount(order) }}</span>
                     </td>
                     <!-- Long emails break after the @ rather than mid-word -->

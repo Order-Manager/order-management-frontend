@@ -47,6 +47,9 @@ export const updateTypesToMessage = {
     'order-received': "Order Delivered, waiting for pick up",
     'order-completed': "Order completed",
     'order-items-updated': "Order items updated",
+    // Only found in older orders
+    'review-pi-requested': "PI review requested",
+    'review-pi-approved': "Approved by PI",
 }
 
 export const statusTypesToMessage = {

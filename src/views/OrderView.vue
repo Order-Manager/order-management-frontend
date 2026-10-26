@@ -385,7 +385,7 @@ export default {
     watch: {
         "order.title": {
             handler(title) {
-                if (title) document.title = `${title} · IFT Orders`;
+                if (this.order) document.title = `${title || 'Untitled order'} · IFT Orders`;
             },
             immediate: true,
         },
@@ -430,7 +430,7 @@ export default {
         <section class="order-summary" aria-labelledby="order-title">
             <div class="summary-top">
                 <div>
-                    <h1 id="order-title">{{ order.title }}</h1>
+                    <h1 id="order-title">{{ order.title || '(Untitled order)' }}</h1>
                     <p class="summary-meta">Requested by {{ order.requestedBy }} · <RelativeTime :value="order.creationDate" /></p>
                 </div>
                 <StatusBadge :status="order.status" />
@@ -619,7 +619,7 @@ export default {
                         <span class="material-symbols-outlined" aria-hidden="true">{{ updateTypesToIcon[update.type] ?  updateTypesToIcon[update.type] : 'notifications' }}</span>
                     </div>
                     <div class="update-header">
-                        <h3 class="update-title" :class="updateTypesToColor[update.type] ? updateTypesToColor[update.type] : 'red'">{{ updateTypesToMessage[update.type] }} to {{ update.message }}&nbsp;</h3>
+                        <h3 class="update-title" :class="updateTypesToColor[update.type] ? updateTypesToColor[update.type] : 'red'">{{ updateTypesToMessage[update.type] || update.type }} to {{ update.message }}&nbsp;</h3>
                         <p class="update-author">by {{ update.author }},&nbsp;</p>
                         <p class="update-date"><RelativeTime :value="update.date" /></p>
                     </div>
@@ -631,7 +631,7 @@ export default {
                         <span class="material-symbols-outlined" aria-hidden="true">{{ updateTypesToIcon[update.type] ?  updateTypesToIcon[update.type] : 'notifications' }}</span>
                     </div>
                     <div class="update-header">
-                        <h3 class="update-title" :class="updateTypesToColor[update.type] ? updateTypesToColor[update.type] : 'red'">{{ updateTypesToMessage[update.type] }}&nbsp;</h3>
+                        <h3 class="update-title" :class="updateTypesToColor[update.type] ? updateTypesToColor[update.type] : 'red'">{{ updateTypesToMessage[update.type] || update.type }}&nbsp;</h3>
                         <p class="update-author">by {{ update.author }},&nbsp;</p>
                         <p class="update-date"><RelativeTime :value="update.date" /></p>
                     </div>
