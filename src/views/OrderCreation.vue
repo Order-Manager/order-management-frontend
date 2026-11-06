@@ -19,7 +19,7 @@
         useCurrentUser
     } from "vuefire";
 
-    import { tagsTypes } from '../utils/definitions'
+    import { tagsTypes, MIN_JUSTIFICATION, JUSTIFICATION_PLACEHOLDER } from '../utils/definitions'
     import { formatEuros, orderTotal } from '../utils/dates.js'
 
     import { useToast } from "vue-toastification";
@@ -36,6 +36,11 @@
                 if (this.title.trim().length === 0) errors.title = "Give your order a title.";
                 if (this.selectedTags.length === 0) errors.tags = "Select at least one tag.";
                 if (this.items.length === 0) errors.items = "Add at least one item.";
+                // Drafts can be saved half-written; the justification is required to submit
+                const justification = this.comment.trim().length;
+                if (!this.isDraft && justification < MIN_JUSTIFICATION) {
+                    errors.comment = `Explain why you need these parts: at least ${MIN_JUSTIFICATION} characters (${justification} so far).`;
+                }
 
                 const strip = (url) => url.split("https://www.").slice(-1)[0].split("https://").slice(-1)[0];
                 const supplierUrl = strip(this.selectedSupplier ? this.selectedSupplier.webpage : "");
@@ -64,6 +69,7 @@
                         const selector = this.errors.title ? '#title'
                             : this.errors.tags ? '.tag-tab button, #tags-types-div button'
                             : this.errors.items ? '#add-item-button'
+                            : this.errors.comment && Object.keys(this.errors).length === 1 ? '#comment'
                             : '[aria-invalid="true"]';
                         this.$el.querySelector(selector)?.focus();
                     });
@@ -115,6 +121,9 @@
                 return this.errors[id] || "";
             },
             formatEuros, orderTotal,
+            justificationCount() {
+                return this.comment.trim().length;
+            },
             async saveAsDraft(email, uid) {
                 this.isDraft = true;
                 await this.createOrder(email, uid);
@@ -203,11 +212,14 @@
             const toast = useToast();
 
             return {
-                suppliers, user, tags, tagsTypes, selectedTags, toast
+                suppliers, user, tags, tagsTypes, selectedTags, toast, MIN_JUSTIFICATION, JUSTIFICATION_PLACEHOLDER
             }
         },
         watch: {
             title() {
+                this.revalidate();
+            },
+            comment() {
                 this.revalidate();
             },
             selectedSupplier() {
@@ -368,8 +380,23 @@
                 </div>
             </fieldset>
             <div class="order-form-category">
-                <label class="category-label" for="comment">Comment</label>
-                <textarea id="comment" name="comment" v-model="comment" rows="3"></textarea>
+                <label class="category-label" for="comment">Justification</label>
+                <div class="field">
+                    <textarea
+                        id="comment"
+                        name="comment"
+                        v-model="comment"
+                        rows="6"
+                        maxlength="1000"
+                        :placeholder="JUSTIFICATION_PLACEHOLDER"
+                        :aria-invalid="!!fieldError('comment')"
+                        aria-describedby="comment-count comment-error"
+                    ></textarea>
+                    <p id="comment-count" class="field-hint" :class="{ met: justificationCount() >= MIN_JUSTIFICATION }">
+                        {{ justificationCount() }} / {{ MIN_JUSTIFICATION }} characters minimum
+                    </p>
+                    <p id="comment-error" class="field-error">{{ fieldError('comment') }}</p>
+                </div>
             </div>
             <p class="field-error form-message" role="alert">{{ formMessage }}</p>
             <div class="center-row medium-gap form-actions">
@@ -489,7 +516,7 @@
         margin-bottom: var(--space-3);
     }
 
-    #title {
+    #title, #comment {
         width: 100%;
         box-sizing: border-box;
     }

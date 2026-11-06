@@ -114,6 +114,14 @@ export const updateTypesToIcon = {
     "order-items-updated": "edit",
 }
 
+// Minimum length of the justification students give when they submit an order
+export const MIN_JUSTIFICATION = 100;
+
+export const JUSTIFICATION_PLACEHOLDER = [
+    "Explain why you need these parts and what they will be used for.",
+    "Createch students: also describe what you have already built, tested or explored that shows you are ready for them.",
+].join("\n\n");
+
 export const tagsTypes = [
     "project",
     "stock",

@@ -177,6 +177,13 @@ describe('orders: owner updates', () => {
         }))
     })
 
+    test('add a comment while the history is still empty', async () => {
+        await seed('orders/fresh', order(STUDENT, { updates: [], status: 'draft' }))
+        await assertSucceeds(updateDoc(doc(db(STUDENT), 'orders/fresh'), {
+            updates: arrayUnion({ type: 'comment', date: new Date(), author: STUDENT.email, message: 'Why I need these parts' }),
+        }))
+    })
+
     test('add a comment by rewriting the whole list (pre-arrayUnion client)', async () => {
         const current = (await getDoc(doc(db(STUDENT), 'orders/o1'))).data().updates
         await assertSucceeds(updateDoc(doc(db(STUDENT), 'orders/o1'), {

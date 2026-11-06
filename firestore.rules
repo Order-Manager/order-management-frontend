@@ -52,7 +52,8 @@ service cloud.firestore {
       let added = after[before.size()];
       return changedKeys().hasOnly(['updates'])
         && after.size() == before.size() + 1
-        && after[0:before.size()] == before
+        // An empty slice raises an error in rules, so skip the prefix check on an empty history
+        && (before.size() == 0 || after[0:before.size()] == before)
         && added.keys().hasOnly(['type', 'date', 'author', 'message'])
         && added.type == 'comment'
         && added.author == request.auth.token.email

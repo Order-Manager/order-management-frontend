@@ -7,7 +7,7 @@ import { doc, updateDoc, collection, arrayUnion, Timestamp } from "firebase/fire
 
 import { useRoute } from 'vue-router'
 
-import { updateTypesToMessage, statusTypesToMessage, statusTypesToColor, updateTypesToColor, updateTypesToIcon, priorityToColor } from '../utils/definitions.js'
+import { updateTypesToMessage, statusTypesToMessage, statusTypesToColor, updateTypesToColor, updateTypesToIcon, priorityToColor, MIN_JUSTIFICATION, JUSTIFICATION_PLACEHOLDER } from '../utils/definitions.js'
 
 import { useToast } from "vue-toastification";
 
@@ -130,12 +130,49 @@ export default {
             return ['refusedIR', 'cancelled'].includes(this.order.status)
         },
         formatEuros, orderTotal,
+        // Drafts can be saved without a full justification; ask for one before they go to review
         publishOrder() {
+            if ((this.order.comment || "").trim().length >= MIN_JUSTIFICATION) {
+                this.confirmPublish()
+                return
+            }
+            this.justification = ""
+            this.justificationError = ""
+            this.$refs.justifyDialog.showModal()
+        },
+        async confirmPublish(justification) {
             const db = useFirestore()
             const orderRef = doc(db, 'orders', this.order_id)
-            updateDoc(orderRef, {
-                "status": "pendingIR",
-            })
+            this.busy = true
+            try {
+                // Posted as the student's own comment, so it shows in the history and emails nobody
+                if (justification) {
+                    await updateDoc(orderRef, {
+                        "updates": arrayUnion({
+                            "type": "comment",
+                            "date": new Date(),
+                            "author": this.currentUser.email,
+                            "message": justification
+                        })
+                    })
+                }
+                await updateDoc(orderRef, { "status": "pendingIR" })
+                if (this.$refs.justifyDialog.open) this.$refs.justifyDialog.close()
+                this.showSuccess("Order submitted. A research engineer will review it.")
+            } catch (error) {
+                this.showError("Could not submit the order: " + error.message)
+            } finally {
+                this.busy = false
+            }
+        },
+        submitJustification() {
+            const text = this.justification.trim()
+            if (text.length < MIN_JUSTIFICATION) {
+                this.justificationError = `Explain why you need these parts: at least ${MIN_JUSTIFICATION} characters (${text.length} so far).`
+                this.$refs.justification.focus()
+                return
+            }
+            this.confirmPublish(text)
         },
         approvedByIR() {
             const db = useFirestore()
@@ -415,6 +452,8 @@ export default {
             editingItems: false, // Toggle for editing items
             newComment: "",
             rejectReason: "",
+            justification: "",
+            justificationError: "",
             rejectError: "",
             busy: false,
         };
@@ -439,6 +478,7 @@ export default {
         const selectedReviewer = ref("");
 
         return {
+            MIN_JUSTIFICATION, JUSTIFICATION_PLACEHOLDER,
             order, order_id, updateTypesToMessage, statusTypesToMessage, userData, statusTypesToColor, updateTypesToColor, updateTypesToIcon, priorityToColor, tags, currentUser, toast, supplierUrl, reviewers, selectedReviewer
         }
     }
@@ -700,6 +740,32 @@ export default {
                 <div class="dialog-actions">
                     <button type="button" @click="$refs.rejectDialog.close()">Keep reviewing</button>
                     <button type="submit" class="danger" :disabled="busy">Reject order</button>
+                </div>
+            </form>
+        </dialog>
+
+        <dialog ref="justifyDialog" class="dialog" aria-labelledby="justify-title">
+            <form @submit.prevent="submitJustification()" novalidate>
+                <h2 id="justify-title">Why do you need these parts?</h2>
+                <p>Research engineers read this before approving your order.</p>
+                <label for="justification">Justification</label>
+                <textarea
+                    id="justification"
+                    ref="justification"
+                    v-model="justification"
+                    rows="6"
+                    maxlength="1000"
+                    :placeholder="JUSTIFICATION_PLACEHOLDER"
+                    :aria-invalid="!!justificationError"
+                    aria-describedby="justification-count justification-error"
+                ></textarea>
+                <p id="justification-count" class="field-hint" :class="{ met: justification.trim().length >= MIN_JUSTIFICATION }">
+                    {{ justification.trim().length }} / {{ MIN_JUSTIFICATION }} characters minimum
+                </p>
+                <p id="justification-error" class="field-error" role="alert">{{ justificationError }}</p>
+                <div class="dialog-actions">
+                    <button type="button" @click="$refs.justifyDialog.close()">Not yet</button>
+                    <button type="submit" class="primary" :disabled="busy">Submit order</button>
                 </div>
             </form>
         </dialog>

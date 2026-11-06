@@ -343,6 +343,22 @@ button:disabled {
   font-weight: 500;
 }
 
+/* Helper text under a field */
+.field-hint {
+  margin: var(--space-1) 0 0 0;
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+}
+
+.field-hint.met {
+  color: var(--green);
+}
+
+::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
 /* Inline validation message under a field (empty until there is an error) */
 .field-error {
   margin: var(--space-1) 0 0 0;
