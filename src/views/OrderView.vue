@@ -14,12 +14,13 @@ import { useToast } from "vue-toastification";
 import StatusBadge from '../components/StatusBadge.vue'
 import RelativeTime from '../components/RelativeTime.vue'
 import OrderProgress from '../components/OrderProgress.vue'
+import InvoicesPanel from '../components/InvoicesPanel.vue'
 import { formatEuros, orderTotal } from '../utils/dates.js'
 
 
 export default {
     components: {
-        StatusBadge, RelativeTime, OrderProgress
+        StatusBadge, RelativeTime, OrderProgress, InvoicesPanel
     },
     methods: {
         goToOrder(date) {
@@ -663,6 +664,12 @@ export default {
 
         </div>
 
+
+        <InvoicesPanel
+            v-if="isReviewer() && ['ordered', 'received', 'completed'].includes(order.status)"
+            :order="order"
+            :orderId="order_id"
+        />
 
         <h2 class="section-title">
             <span class="material-symbols-outlined" aria-hidden="true">history</span>

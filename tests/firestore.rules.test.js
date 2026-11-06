@@ -9,6 +9,7 @@ import {
 import {
     Timestamp,
     addDoc,
+    arrayRemove,
     arrayUnion,
     collection,
     deleteDoc,
@@ -142,6 +143,10 @@ describe('orders: creating', () => {
         await assertFails(addDoc(collection(db(STUDENT), 'orders'), order(STUDENT, { updates: [], archived: true })))
     })
 
+    test('cannot create an order with invoices attached', async () => {
+        await assertFails(addDoc(collection(db(STUDENT), 'orders'), order(STUDENT, { updates: [], invoices: [{ id: 'x', name: 'fake.pdf' }] })))
+    })
+
     test('cannot pre-fill the history', async () => {
         await assertFails(addDoc(collection(db(STUDENT), 'orders'), order(STUDENT)))
     })
@@ -218,6 +223,11 @@ describe('orders: owner updates', () => {
         )))
     })
 
+    test('cannot attach invoices to own order', async () => {
+        await seed('orders/o3', order(STUDENT, { status: 'ordered' }))
+        await assertFails(updateDoc(doc(db(STUDENT), 'orders/o3'), { invoices: [{ id: 'x', name: 'fake.pdf' }] }))
+    })
+
     test('cannot transfer ownership', async () => {
         await assertFails(updateDoc(doc(db(STUDENT), 'orders/o1'), { requestedBy: OTHER.email }))
     })
@@ -246,6 +256,13 @@ describe('orders: admin updates', () => {
         const archive = { archived: true, archivedAt: new Date(), archivedBy: ADMIN.email, lastUpdate: Timestamp.now() }
         await assertSucceeds(updateDoc(doc(db(ADMIN), 'orders/o1'), archive))
         await assertSucceeds(updateDoc(doc(db(ADMIN), 'orders/o1'), { archived: false, lastUpdate: Timestamp.now() }))
+    })
+
+    test('attach and remove invoices', async () => {
+        await seed('orders/o3', order(STUDENT, { status: 'ordered' }))
+        const invoice = { id: 'a'.repeat(32), name: 'RS.pdf', size: 1000, uploadedAt: Timestamp.now(), uploadedBy: ADMIN.email }
+        await assertSucceeds(updateDoc(doc(db(ADMIN), 'orders/o3'), { invoices: arrayUnion(invoice) }))
+        await assertSucceeds(updateDoc(doc(db(ADMIN), 'orders/o3'), { invoices: arrayRemove(invoice) }))
     })
 
     test('cannot rewrite the owner', async () => {

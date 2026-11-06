@@ -73,7 +73,9 @@ service cloud.firestore {
         && request.resource.data.status in ['draft', 'pendingIR']
         && request.resource.data.updates == []
         // An order created archived would never reach the reviewers
-        && request.resource.data.get('archived', false) == false;
+        && request.resource.data.get('archived', false) == false
+        // Invoices are attached by staff through the orders-files service
+        && !('invoices' in request.resource.data);
 
       allow update: if (isAdmin()
           && !changedKeys().hasAny(['requestedBy', 'requestedById', 'creationDate']))
