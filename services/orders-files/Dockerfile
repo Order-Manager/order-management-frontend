@@ -3,8 +3,10 @@ COPY --from=ghcr.io/astral-sh/uv:0.5.11 /uv /usr/local/bin/uv
 
 WORKDIR /srv
 COPY pyproject.toml ./
-RUN uv pip install --system -r pyproject.toml
+# Compile at build time: the unprivileged user can't write bytecode caches at runtime
+RUN UV_COMPILE_BYTECODE=1 uv pip install --system -r pyproject.toml
 COPY app ./app
+RUN python -m compileall -q app
 
 # Runs unprivileged; the host folder mounted on /data must be owned by uid 10001
 RUN useradd --uid 10001 --no-create-home files && mkdir /data && chown files /data
