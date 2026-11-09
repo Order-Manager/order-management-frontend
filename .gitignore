@@ -25,3 +25,6 @@ dist-ssr
 
 venv/
 *__pycache__/
+
+# Data exports (contain personal data)
+exports/

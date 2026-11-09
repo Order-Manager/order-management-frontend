@@ -21,6 +21,7 @@
 
     import { tagsTypes, MIN_JUSTIFICATION, JUSTIFICATION_PLACEHOLDER } from '../utils/definitions'
     import { formatEuros, orderTotal } from '../utils/dates.js'
+    import { displayName } from '../utils/people.js'
 
     import { useToast } from "vue-toastification";
 
@@ -34,6 +35,7 @@
             validate() {
                 const errors = {};
                 if (this.title.trim().length === 0) errors.title = "Give your order a title.";
+                if (!this.referents.some(referent => referent.id === this.referentId)) errors.referent = "Choose your referent.";
                 if (this.selectedTags.length === 0) errors.tags = "Select at least one tag.";
                 if (this.items.length === 0) errors.items = "Add at least one item.";
                 // Drafts can be saved half-written; the justification is required to submit
@@ -67,6 +69,7 @@
                     // Move focus to the first field that needs fixing, in page order
                     this.$nextTick(() => {
                         const selector = this.errors.title ? '#title'
+                            : this.errors.referent ? '#referent'
                             : this.errors.tags ? '.tag-tab button, #tags-types-div button'
                             : this.errors.items ? '#add-item-button'
                             : this.errors.comment && Object.keys(this.errors).length === 1 ? '#comment'
@@ -90,6 +93,8 @@
                         lastUpdate: new Date(),
                         requestedBy: email,
                         requestedById: uid,
+                        referent: this.referents.find(referent => referent.id === this.referentId).email,
+                        referentId: this.referentId,
                         status: status,
                         title: this.title.trim(),
                         supplier: this.selectedSupplier.name,
@@ -120,7 +125,7 @@
             fieldError(id) {
                 return this.errors[id] || "";
             },
-            formatEuros, orderTotal,
+            formatEuros, orderTotal, displayName,
             justificationCount() {
                 return this.comment.trim().length;
             },
@@ -186,6 +191,7 @@
                 },
                 isDraft: false,
                 title: '',
+                referentId: '',
                 comment: '',
                 priority: 'low',
                 errors: {},
@@ -207,16 +213,26 @@
             const user = useCurrentUser()
 
             const tags = useCollection(collection(db, 'tags'));
+            // Research engineers students can name as their referent (admins flagged isReferent)
+            const referentsRaw = useCollection(query(collection(db, 'admins'), where('isReferent', '==', true)));
             const selectedTags = ref([]);
 
             const toast = useToast();
 
             return {
-                suppliers, user, tags, tagsTypes, selectedTags, toast, MIN_JUSTIFICATION, JUSTIFICATION_PLACEHOLDER
+                suppliers, user, tags, tagsTypes, selectedTags, toast, MIN_JUSTIFICATION, JUSTIFICATION_PLACEHOLDER, referentsRaw
             }
+        },
+        computed: {
+            referents() {
+                return [...this.referentsRaw].sort((a, b) => displayName(a.email).localeCompare(displayName(b.email)));
+            },
         },
         watch: {
             title() {
+                this.revalidate();
+            },
+            referentId() {
                 this.revalidate();
             },
             comment() {
@@ -271,6 +287,18 @@
                     <input type="text" id="title" name="title" v-model="title" required
                         :aria-invalid="!!fieldError('title')" aria-describedby="title-error">
                     <p id="title-error" class="field-error">{{ fieldError('title') }}</p>
+                </div>
+            </div>
+            <div class="order-form-category">
+                <label class="category-label" for="referent">Referent</label>
+                <div class="field">
+                    <select id="referent" name="referent" v-model="referentId" required
+                        :aria-invalid="!!fieldError('referent')" aria-describedby="referent-hint referent-error">
+                        <option value="" disabled>Choose a research engineer</option>
+                        <option v-for="referent in referents" :key="referent.id" :value="referent.id">{{ displayName(referent.email) }}</option>
+                    </select>
+                    <p id="referent-hint" class="field-hint">The research engineer who follows your project.</p>
+                    <p id="referent-error" class="field-error">{{ fieldError('referent') }}</p>
                 </div>
             </div>
             <div class="order-form-category">
@@ -516,7 +544,7 @@
         margin-bottom: var(--space-3);
     }
 
-    #title, #comment {
+    #title, #comment, #referent {
         width: 100%;
         box-sizing: border-box;
     }

@@ -16,6 +16,7 @@ import RelativeTime from '../components/RelativeTime.vue'
 import OrderProgress from '../components/OrderProgress.vue'
 import InvoicesPanel from '../components/InvoicesPanel.vue'
 import { formatEuros, orderTotal } from '../utils/dates.js'
+import { displayName } from '../utils/people.js'
 
 
 export default {
@@ -130,7 +131,7 @@ export default {
         isEnded() {
             return ['refusedIR', 'cancelled'].includes(this.order.status)
         },
-        formatEuros, orderTotal,
+        formatEuros, orderTotal, displayName,
         // Drafts can be saved without a full justification; ask for one before they go to review
         publishOrder() {
             if ((this.order.comment || "").trim().length >= MIN_JUSTIFICATION) {
@@ -506,6 +507,10 @@ export default {
                 <span>{{ order.archivedAt ? 'Archived ' : 'Archived' }}<RelativeTime v-if="order.archivedAt" :value="order.archivedAt" />. It only appears under Archived in the order list.</span>
             </p>
             <dl class="summary-facts">
+                <div>
+                    <dt>Referent</dt>
+                    <dd>{{ order.referent ? displayName(order.referent) : '—' }}</dd>
+                </div>
                 <div>
                     <dt>Supplier</dt>
                     <dd>{{ order.supplier }}</dd>

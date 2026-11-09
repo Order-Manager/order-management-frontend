@@ -14,6 +14,15 @@ service cloud.firestore {
       return isDevinci() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
+    // The research engineer a student names as their referent: an admin flagged isReferent
+    function isReferent(data) {
+      let path = /databases/$(database)/documents/admins/$(data.referentId);
+      return data.referentId is string
+        && exists(path)
+        && get(path).data.get('isReferent', false) == true
+        && get(path).data.email == data.referent;
+    }
+
     function changedKeys() {
       return request.resource.data.diff(resource.data).affectedKeys();
     }
@@ -75,7 +84,8 @@ service cloud.firestore {
         // An order created archived would never reach the reviewers
         && request.resource.data.get('archived', false) == false
         // Invoices are attached by staff through the orders-files service
-        && !('invoices' in request.resource.data);
+        && !('invoices' in request.resource.data)
+        && isReferent(request.resource.data);
 
       allow update: if (isAdmin()
           && !changedKeys().hasAny(['requestedBy', 'requestedById', 'creationDate']))
@@ -106,7 +116,8 @@ service cloud.firestore {
     }
 
     match /admins/{userId} {
-      allow read: if isDevinci() && (request.auth.uid == userId || isAdmin());
+      // Everyone signed in can list the referents (to pick one when ordering); the rest stays private
+      allow read: if isDevinci() && (request.auth.uid == userId || isAdmin() || resource.data.get('isReferent', false) == true);
       allow write: if isAdmin();
     }
 

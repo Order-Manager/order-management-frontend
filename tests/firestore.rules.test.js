@@ -53,6 +53,8 @@ function order(owner, overrides = {}) {
         updates: [{ type: 'order-creation', date: Timestamp.now(), author: 'system' }],
         tags: ['t1'],
         priority: 'low',
+        referent: ADMIN.email,
+        referentId: ADMIN.uid,
         ...overrides,
     }
 }
@@ -76,7 +78,8 @@ afterAll(async () => {
 
 beforeEach(async () => {
     await env.clearFirestore()
-    await seed('admins/admin', { email: ADMIN.email, isIR: true })
+    await seed('admins/admin', { email: ADMIN.email, isIR: true, isReferent: true })
+    await seed('admins/other-admin', { email: 'other.admin@devinci.fr', isIR: true })
     await seed('orders/o1', order(STUDENT))
     await seed('orders/draft', order(STUDENT, { status: 'draft' }))
     await seed('suppliers/s1', { name: 'RS', webpage: 'https://rs-online.com', hidden: false })
@@ -145,6 +148,18 @@ describe('orders: creating', () => {
 
     test('cannot create an order with invoices attached', async () => {
         await assertFails(addDoc(collection(db(STUDENT), 'orders'), order(STUDENT, { updates: [], invoices: [{ id: 'x', name: 'fake.pdf' }] })))
+    })
+
+    test('needs a referent from the referent list', async () => {
+        const withoutReferent = order(STUDENT, { updates: [] })
+        delete withoutReferent.referent
+        delete withoutReferent.referentId
+        await assertFails(addDoc(collection(db(STUDENT), 'orders'), withoutReferent))
+        // An admin who isn't a referent
+        await assertFails(addDoc(collection(db(STUDENT), 'orders'), order(STUDENT, { updates: [], referent: 'other.admin@devinci.fr', referentId: 'other-admin' })))
+        // A referent id with someone else's email
+        await assertFails(addDoc(collection(db(STUDENT), 'orders'), order(STUDENT, { updates: [], referent: 'fake@devinci.fr' })))
+        await assertFails(addDoc(collection(db(STUDENT), 'orders'), order(STUDENT, { updates: [], referentId: 'nobody' })))
     })
 
     test('cannot pre-fill the history', async () => {
@@ -278,9 +293,11 @@ describe('reference data and admins', () => {
         }
     })
 
-    test('users read only their own admin doc', async () => {
+    test('users read their own admin doc and the referents, nothing else', async () => {
         await assertSucceeds(getDoc(doc(db(STUDENT), 'admins/student')))
-        await assertFails(getDoc(doc(db(STUDENT), 'admins/admin')))
+        await assertSucceeds(getDoc(doc(db(STUDENT), 'admins/admin')))
+        await assertFails(getDoc(doc(db(STUDENT), 'admins/other-admin')))
+        await assertSucceeds(getDocs(query(collection(db(STUDENT), 'admins'), where('isReferent', '==', true))))
         await assertFails(getDocs(collection(db(STUDENT), 'admins')))
         await assertSucceeds(getDocs(collection(db(ADMIN), 'admins')))
     })

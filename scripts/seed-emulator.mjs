@@ -55,7 +55,9 @@ for (const user of [ADMIN, STUDENT, OTHER]) {
         else if (!text.includes('DUPLICATE')) throw new Error(`user ${user.email}: ${text}`)
     }
 }
-await setDoc(`admins/${ADMIN.uid}`, { email: ADMIN.email, isIR: true })
+await setDoc(`admins/${ADMIN.uid}`, { email: ADMIN.email, isIR: true, isReferent: true })
+// An admin who isn't offered as a referent
+await setDoc('admins/not-a-referent', { email: 'former.engineer@devinci.fr', isIR: true })
 
 const suppliers = [
     ['rs', 'RS Components', 'https://fr.rs-online.com'],
