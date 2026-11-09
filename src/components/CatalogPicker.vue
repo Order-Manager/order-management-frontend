@@ -4,6 +4,7 @@
 import { computed, ref } from 'vue'
 import { useCollection, useFirestore } from 'vuefire'
 import { collection } from 'firebase/firestore'
+import StockBadge from './StockBadge.vue'
 import { groupByCategory, matchesSearch, partLabel } from '../utils/catalog.js'
 import { formatEuros } from '../utils/dates.js'
 
@@ -60,7 +61,7 @@ defineExpose({ open })
                 <ul>
                     <li v-for="part in group.parts" :key="part.id">
                         <span class="picker-text">
-                            <span class="picker-name">{{ part.name }}</span>
+                            <span class="picker-name">{{ part.name }} <StockBadge :stock="part.stock" /></span>
                             <span class="picker-meta"><span v-if="part.note">{{ part.note }} · </span>{{ part.supplier }} · {{ formatEuros(part.price) }}</span>
                         </span>
                         <button type="button" @click="pick(part)">

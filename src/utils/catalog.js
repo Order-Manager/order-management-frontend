@@ -14,6 +14,29 @@ export const CATALOG_CATEGORIES = [
     'Kit supplies',
 ]
 
+// A rough idea of what the lab has, set by referents by eye (no counts). Parts without one are unknown.
+export const STOCK_LEVELS = {
+    high: { label: 'In stock', icon: 'inventory_2', color: 'green', item: 'Probably in stock at the lab' },
+    low: { label: 'Low stock', icon: 'warning', color: 'orange', item: 'Low stock at the lab: maybe a few left' },
+    none: { label: 'Out of stock', icon: 'block', color: 'grey', item: 'Not in stock at the lab' },
+}
+
+// Links compared the way they point to the same product: Amazon by product code, others without
+// the protocol, "www." or a trailing slash
+export function normalizeLink(link) {
+    const text = (link || '').trim()
+    const asin = text.match(/amazon\.[a-z.]+\/(?:.*\/)?(?:dp|gp\/product)\/([A-Z0-9]{10})/i)
+    if (asin) return `amazon/${asin[1].toUpperCase()}`
+    return text.toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').split('#')[0].replace(/\/+$/, '')
+}
+
+// For each item of an order, the catalogue part with the same link, if any
+export function partsByLink(parts) {
+    const map = new Map()
+    for (const part of parts) if (part.link) map.set(normalizeLink(part.link), part)
+    return map
+}
+
 // How a part is named in an order's items
 export function partLabel(part) {
     return part.note ? `${part.name} (${part.note})` : part.name

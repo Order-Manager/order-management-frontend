@@ -15,15 +15,22 @@ import StatusBadge from '../components/StatusBadge.vue'
 import RelativeTime from '../components/RelativeTime.vue'
 import OrderProgress from '../components/OrderProgress.vue'
 import InvoicesPanel from '../components/InvoicesPanel.vue'
+import StockBadge from '../components/StockBadge.vue'
+import { STOCK_LEVELS, normalizeLink, partsByLink } from '../utils/catalog.js'
 import { formatEuros, orderTotal } from '../utils/dates.js'
 import { displayName } from '../utils/people.js'
 
 
 export default {
     components: {
-        StatusBadge, RelativeTime, OrderProgress, InvoicesPanel
+        StatusBadge, RelativeTime, OrderProgress, InvoicesPanel, StockBadge
     },
     methods: {
+        // The lab's stock of the catalogue part with this item's link, if there is one
+        stockFor(item) {
+            const part = this.catalogByLink.get(normalizeLink(item.link));
+            return part && !part.hidden ? part.stock : undefined;
+        },
         goToOrder(date) {
             this.$router.push(`/view/${date}`)
         },
@@ -478,10 +485,20 @@ export default {
             return suppliers.value.find(s => s.name === order.value.supplier).webpage;
         })
         const selectedReviewer = ref("");
+        const catalog = useCollection(collection(db, 'catalog'))
+        const catalogByLink = computed(() => partsByLink(catalog.value))
+        // The stock levels shown in this order's items, explained under the table
+        const stockLegend = computed(() => {
+            const shown = new Set((order.value?.items || []).map(item => {
+                const part = catalogByLink.value.get(normalizeLink(item.link));
+                return part && !part.hidden ? part.stock : undefined;
+            }))
+            return Object.entries(STOCK_LEVELS).filter(([key]) => shown.has(key)).map(([key, level]) => ({ key, ...level }))
+        })
 
         return {
             MIN_JUSTIFICATION, JUSTIFICATION_PLACEHOLDER,
-            order, order_id, updateTypesToMessage, statusTypesToMessage, userData, statusTypesToColor, updateTypesToColor, updateTypesToIcon, priorityToColor, tags, currentUser, toast, supplierUrl, reviewers, selectedReviewer
+            order, order_id, updateTypesToMessage, statusTypesToMessage, userData, statusTypesToColor, updateTypesToColor, updateTypesToIcon, priorityToColor, tags, currentUser, toast, supplierUrl, reviewers, selectedReviewer, catalogByLink, stockLegend
         }
     }
 }
@@ -573,7 +590,7 @@ export default {
                             </td>
                         </template>
                         <template v-else>
-                            <td class="col-name">{{ item.name }}</td>
+                            <td class="col-name">{{ item.name }} <StockBadge compact :stock="stockFor(item)" /></td>
                             <td class="col-link item-link"><a :href="item.link" :title="item.link" target="_blank" rel="noopener">{{ item.link }}<span class="visually-hidden"> (opens in a new tab)</span></a></td>
                             <td class="col-qty" data-label="Quantity">{{ item.quantity }}</td>
                             <td class="col-price" data-label="Unit price">{{ formatEuros(parseFloat(item.price)) }}</td>
@@ -591,6 +608,13 @@ export default {
                     </tr>
                 </tbody>
             </table>
+            <p v-if="!editingItems && stockLegend.length" class="stock-legend">
+                <span v-for="level in stockLegend" :key="level.key" :class="level.color">
+                    <span class="material-symbols-outlined" aria-hidden="true">{{ level.icon }}</span>
+                    {{ level.item }}
+                </span>
+                <span>(from the <router-link to="/parts">parts catalogue</router-link>)</span>
+            </p>
             <div v-if="editingItems" class="full-width center-both">
                 <button type="button" class="icon-button add-item" v-on:click="addItem()" aria-label="Add item" title="Add item">
                     <span class="material-symbols-outlined" aria-hidden="true">add_circle</span>
@@ -906,6 +930,25 @@ export default {
     display: flex;
     flex-direction: row;
     gap: 0.5rem;
+}
+
+.stock-legend {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1) var(--space-4);
+    margin: var(--space-2) 0 0 0;
+    font-size: var(--font-sm);
+}
+
+.stock-legend > span[class] {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+}
+
+.stock-legend .material-symbols-outlined {
+    font-size: 1.1rem;
 }
 
 .orderview-table input[type="number"] {

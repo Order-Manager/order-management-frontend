@@ -5,8 +5,9 @@ import { computed, nextTick, ref } from 'vue'
 import { useCollection, useCurrentUser, useDocument, useFirestore } from 'vuefire'
 import { addDoc, collection, deleteDoc, doc, orderBy, query, serverTimestamp, updateDoc, where } from 'firebase/firestore'
 import { useToast } from 'vue-toastification'
+import StockBadge from '../components/StockBadge.vue'
 import {
-    CATALOG_CATEGORIES, addToCart, cart, cartBySupplier, cartCount, cartLine, groupByCategory,
+    CATALOG_CATEGORIES, STOCK_LEVELS, addToCart, cart, cartBySupplier, cartCount, cartLine, groupByCategory,
     linkMatchesSupplier, matchesSearch, partLabel, setCartQuantity,
 } from '../utils/catalog.js'
 import { formatEuros } from '../utils/dates.js'
@@ -55,8 +56,8 @@ const confirmingDelete = ref(false)
 function openEditor(part) {
     editing.value = part || null
     form.value = part
-        ? { name: part.name, note: part.note || '', category: part.category || '', supplier: part.supplier, link: part.link, price: part.price, hidden: !!part.hidden }
-        : { name: '', note: '', category: category.value === 'all' ? '' : category.value, supplier: suppliers.value[0]?.name || '', link: '', price: 0, hidden: false }
+        ? { name: part.name, note: part.note || '', category: part.category || '', supplier: part.supplier, link: part.link, price: part.price, stock: part.stock || '', hidden: !!part.hidden }
+        : { name: '', note: '', category: category.value === 'all' ? '' : category.value, supplier: suppliers.value[0]?.name || '', link: '', price: 0, stock: '', hidden: false }
     formErrors.value = {}
     confirmingDelete.value = false
     editDialog.value.showModal()
@@ -84,7 +85,7 @@ async function save() {
     const f = form.value
     const data = {
         name: f.name.trim(), note: f.note.trim(), category: f.category.trim(), supplier: f.supplier,
-        link: f.link.trim(), price: Number(f.price), hidden: f.hidden,
+        link: f.link.trim(), price: Number(f.price), stock: f.stock, hidden: f.hidden,
         updatedAt: serverTimestamp(), updatedBy: user.value.email,
     }
     saving.value = true
@@ -97,6 +98,15 @@ async function save() {
         toast.error('Could not save the part: ' + e.message)
     } finally {
         saving.value = false
+    }
+}
+
+// Quick update from the list, without opening the editor
+async function setStock(part, stock) {
+    try {
+        await updateDoc(doc(db, 'catalog', part.id), { stock, updatedAt: serverTimestamp(), updatedBy: user.value.email })
+    } catch (e) {
+        toast.error('Could not update the stock: ' + e.message)
     }
 }
 
@@ -149,6 +159,7 @@ async function remove() {
                         <div class="part-text">
                             <span class="part-name">
                                 {{ part.name }}
+                                <StockBadge v-if="!isStaff" :stock="part.stock" />
                                 <span v-if="part.hidden" class="status-badge grey">Hidden</span>
                             </span>
                             <span class="part-meta">
@@ -156,6 +167,13 @@ async function remove() {
                             </span>
                         </div>
                         <div class="part-actions">
+                            <template v-if="isStaff">
+                                <label :for="`stock-${part.id}`" class="visually-hidden">Stock of {{ partLabel(part) }}</label>
+                                <select :id="`stock-${part.id}`" class="stock-select" :class="STOCK_LEVELS[part.stock]?.color" :value="part.stock || ''" @change="setStock(part, $event.target.value)">
+                                    <option value="">Stock unknown</option>
+                                    <option v-for="(level, key) in STOCK_LEVELS" :key="key" :value="key">{{ level.label }}</option>
+                                </select>
+                            </template>
                             <a :href="part.link" target="_blank" rel="noopener noreferrer" class="icon-button" :aria-label="`${part.name} on ${part.supplier} (opens in a new tab)`" title="View on the supplier's website">
                                 <span class="material-symbols-outlined" aria-hidden="true">open_in_new</span>
                             </a>
@@ -238,6 +256,13 @@ async function remove() {
             <label for="part-price">Price (€)</label>
             <input id="part-price" type="number" inputmode="decimal" min="0" step="0.01" v-model="form.price" :aria-invalid="!!formErrors.price" aria-describedby="part-price-error" />
             <p id="part-price-error" class="field-error">{{ formErrors.price }}</p>
+
+            <label for="part-stock">Stock at the lab</label>
+            <select id="part-stock" v-model="form.stock" aria-describedby="part-stock-hint">
+                <option value="">Unknown</option>
+                <option v-for="(level, key) in STOCK_LEVELS" :key="key" :value="key">{{ level.label }}</option>
+            </select>
+            <p id="part-stock-hint" class="field-hint">A rough idea, no counts. Students see it here and next to matching items in their orders.</p>
 
             <label class="part-hidden-toggle">
                 <input type="checkbox" v-model="form.hidden" />
@@ -369,6 +394,11 @@ async function remove() {
     justify-content: center;
     gap: var(--space-2);
     min-width: 7rem;
+}
+
+.stock-select {
+    width: 9.5rem;
+    font-size: var(--font-sm);
 }
 
 .add-part .group-count {
@@ -503,6 +533,22 @@ async function remove() {
 }
 
 @media (max-width: 480px) {
+    /* Referents have more buttons per part: let them wrap under the name */
+    .parts-list li {
+        flex-wrap: wrap;
+    }
+
+    .part-actions {
+        margin-left: auto;
+        max-width: 100%;
+    }
+
+    .stock-select {
+        flex: 1 1 auto;
+        width: auto;
+        min-width: 0;
+    }
+
     .add-part {
         min-width: 4.5rem;
     }
