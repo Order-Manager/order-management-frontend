@@ -15,10 +15,12 @@ const headers = {
 }
 const DOCS = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents`
 
+// Same names and webpages as on prod, so the parts catalogue (scripts/seed-catalog.mjs) matches them
 const suppliers = [
-    { id: 'rs', name: 'RS Components', webpage: 'https://fr.rs-online.com' },
-    { id: 'amazon', name: 'Amazon', webpage: 'https://www.amazon.fr' },
-    { id: 'mouser', name: 'Mouser', webpage: 'https://www.mouser.fr' },
+    { id: 'rs', name: 'RS Online', webpage: 'https://fr.rs-online.com/' },
+    { id: 'amazon', name: 'Amazon FR', webpage: 'https://amazon.fr/' },
+    { id: 'mouser', name: 'Mouser', webpage: 'https://mouser.fr/' },
+    { id: 'digikey', name: 'Digikey', webpage: 'https://www.digikey.fr/' },
 ]
 
 const tags = [
