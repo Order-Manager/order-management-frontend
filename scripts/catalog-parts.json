@@ -1,0 +1,482 @@
+[
+  {
+    "name": "Seeed XIAO ESP32-S3",
+    "note": "",
+    "category": "Microcontrollers",
+    "supplier": "Mouser",
+    "link": "https://www.mouser.fr/ProductDetail/713-113991114",
+    "price": 6.74
+  },
+  {
+    "name": "Seeed XIAO ESP32-S3",
+    "note": "Pack of 3",
+    "category": "Microcontrollers",
+    "supplier": "Digikey",
+    "link": "https://www.digikey.fr/short/hthvvmzp",
+    "price": 18.44
+  },
+  {
+    "name": "Seeed XIAO ESP32-S3 Sense",
+    "note": "With OV2640 camera",
+    "category": "Microcontrollers",
+    "supplier": "Digikey",
+    "link": "https://www.digikey.fr/short/952d2wdt",
+    "price": 12.9
+  },
+  {
+    "name": "Seeed XIAO ESP32-C6",
+    "note": "",
+    "category": "Microcontrollers",
+    "supplier": "Digikey",
+    "link": "https://www.digikey.fr/short/77jv90pp",
+    "price": 4.73
+  },
+  {
+    "name": "Seeed XIAO nRF52840 Sense",
+    "note": "Pack of 3",
+    "category": "Microcontrollers",
+    "supplier": "Digikey",
+    "link": "https://www.digikey.fr/short/f2v94dv3",
+    "price": 41.5
+  },
+  {
+    "name": "ESP32-S3-PICO module",
+    "note": "",
+    "category": "Microcontrollers",
+    "supplier": "Mouser",
+    "link": "https://www.mouser.fr/ProductDetail/Espressif-Systems/ESP32-S3-PICO-1-N8R2?qs=1Kr7Jg1SGW%252BOoNgEZ0ZsQg%3D%3D",
+    "price": 3.3
+  },
+  {
+    "name": "MPU-6050 accelerometer and gyroscope",
+    "note": "Pack of 5",
+    "category": "Sensors",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B0CLS1X681",
+    "price": 11.99
+  },
+  {
+    "name": "HC-SR04 ultrasonic range finder",
+    "note": "Pack of 10",
+    "category": "Sensors",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B0D3TNTDFF",
+    "price": 12.5
+  },
+  {
+    "name": "LDR photoresistor",
+    "note": "Pack of 100",
+    "category": "Sensors",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B07F9NNCZ5",
+    "price": 6.99
+  },
+  {
+    "name": "Tilt ball switch",
+    "note": "Pack of 100",
+    "category": "Sensors",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B00M1PMYCE",
+    "price": 13.99
+  },
+  {
+    "name": "INMP441 I2S microphone board",
+    "note": "Pack of 5",
+    "category": "Sensors",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B0CLY1NKLR",
+    "price": 14.24
+  },
+  {
+    "name": "DRV5055 Hall effect sensor",
+    "note": "",
+    "category": "Sensors",
+    "supplier": "Mouser",
+    "link": "https://www.mouser.fr/en/ProductDetail/Texas-Instruments/DRV5055A1QLPGM?qs=rrS6PyfT74eF5s5fWLsdqg%3D%3D",
+    "price": 0.55
+  },
+  {
+    "name": "FSR07CE force sensor",
+    "note": "",
+    "category": "Sensors",
+    "supplier": "Mouser",
+    "link": "https://www.mouser.fr/en/ProductDetail/Ohmite/FSR07CE?qs=0lSvoLzn4L/mJvJPZp0oIg%3D%3D&srsltid=AfmBOorQprEMsl-HKoRVqViDsmHVksddj7Szc1urQVBHWSdKz0QgbqEt",
+    "price": 4.64
+  },
+  {
+    "name": "FSR03 round force sensor, 30 mm",
+    "note": "",
+    "category": "Sensors",
+    "supplier": "Digikey",
+    "link": "https://www.digikey.fr/fr/products/detail/ohmite/FSR03DE/14552703",
+    "price": 9.39
+  },
+  {
+    "name": "Potentiometer 10 kΩ",
+    "note": "Pack of 20",
+    "category": "Sensors",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B07RHJZ979",
+    "price": 10.49
+  },
+  {
+    "name": "SG90 9 g servo",
+    "note": "Pack of 10",
+    "category": "Actuators and output",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B0DFCFHD42",
+    "price": 16.14
+  },
+  {
+    "name": "Gear motor 3-6 V",
+    "note": "Pack of 8",
+    "category": "Actuators and output",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B096ZHKTLW",
+    "price": 11.99
+  },
+  {
+    "name": "28BYJ-48 stepper with ULN2003 driver",
+    "note": "Pack of 5",
+    "category": "Actuators and output",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B07VRCZNTF",
+    "price": 13.85
+  },
+  {
+    "name": "OLED screen 128x64",
+    "note": "Pack of 5",
+    "category": "Actuators and output",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B0D2P4J1R6",
+    "price": 14.99
+  },
+  {
+    "name": "Speaker 8 Ω 0.25 W, 23 mm",
+    "note": "",
+    "category": "Actuators and output",
+    "supplier": "Mouser",
+    "link": "https://www.mouser.fr/ProductDetail/Mallory-Sonalert/PSR-23F08S-JQ?qs=naGIj9LdhlMdvjQCvf49NA%3D%3D",
+    "price": 0.47
+  },
+  {
+    "name": "Piezo buzzer 4 kHz 3 V",
+    "note": "",
+    "category": "Actuators and output",
+    "supplier": "Mouser",
+    "link": "https://www.mouser.fr/ProductDetail/TDK/PS1240P02BT?qs=d7g9p1yFhWaZXSY9MjKMkw%3D%3D",
+    "price": 0.45
+  },
+  {
+    "name": "LRA haptic motor VLV101040A",
+    "note": "",
+    "category": "Actuators and output",
+    "supplier": "Digikey",
+    "link": "https://www.digikey.fr/fr/products/detail/vybronics-inc/VLV101040A/12323590?s=N4IgTCBcDaIGoBk4EYAMaAsqCCIC6AvkA",
+    "price": 5.54
+  },
+  {
+    "name": "LRA haptic motor VLV152564W",
+    "note": "",
+    "category": "Actuators and output",
+    "supplier": "Digikey",
+    "link": "https://www.digikey.fr/fr/products/detail/vybronics-inc/VLV152564W/19203005?s=N4IgTCBcDaIGoBk4EYCsZUDYAsB1EAugL5A",
+    "price": 0.0
+  },
+  {
+    "name": "Brushless motor ROB-20441",
+    "note": "",
+    "category": "Actuators and output",
+    "supplier": "Digikey",
+    "link": "https://www.digikey.fr/fr/products/detail/sparkfun-electronics/ROB-20441/16820876",
+    "price": 28.55
+  },
+  {
+    "name": "RGB LED 5 mm",
+    "note": "Pack of 100",
+    "category": "Actuators and output",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B0897L6TZ8",
+    "price": 9.2
+  },
+  {
+    "name": "Red LED 5 mm",
+    "note": "",
+    "category": "Actuators and output",
+    "supplier": "Mouser",
+    "link": "https://www.mouser.fr/ProductDetail/Wurth-Elektronik/151034RS03000?qs=sGAEpiMZZMsl8UZd3ZuU6aAY3C3HMTrKis83YM2NYAnR8bgUN2W%252BEQ%3D%3D",
+    "price": 0.09
+  },
+  {
+    "name": "L293D motor driver",
+    "note": "Pack of 10",
+    "category": "ICs and drivers",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B09TK1RPSX",
+    "price": 8.31
+  },
+  {
+    "name": "74HC595 shift register",
+    "note": "Pack of 50",
+    "category": "ICs and drivers",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B0BJKHJM9N",
+    "price": 15.89
+  },
+  {
+    "name": "74HC14 Schmitt trigger inverter",
+    "note": "",
+    "category": "ICs and drivers",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B0C747FZWN",
+    "price": 9.0
+  },
+  {
+    "name": "CD4040 binary counter",
+    "note": "",
+    "category": "ICs and drivers",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B0C747HF1Q",
+    "price": 11.0
+  },
+  {
+    "name": "NE555 timer (SE555P)",
+    "note": "",
+    "category": "ICs and drivers",
+    "supplier": "Mouser",
+    "link": "https://www.mouser.fr/ProductDetail/Texas-Instruments/SE555P?qs=gb35HGp1gQKYdWxuRECDgA%3D%3D",
+    "price": 0.34
+  },
+  {
+    "name": "LM386 audio amplifier",
+    "note": "",
+    "category": "ICs and drivers",
+    "supplier": "Mouser",
+    "link": "https://www.mouser.fr/ProductDetail/Texas-Instruments/LM386N-1-NOPB?qs=QbsRYf82W3GLguMHc1jDPg%3D%3D",
+    "price": 0.47
+  },
+  {
+    "name": "MAX98357 I2S amplifier board",
+    "note": "Pack of 6",
+    "category": "ICs and drivers",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B0F6T685VJ",
+    "price": 16.39
+  },
+  {
+    "name": "TMC6300 BLDC motor driver",
+    "note": "",
+    "category": "ICs and drivers",
+    "supplier": "Digikey",
+    "link": "https://www.digikey.fr/fr/products/detail/analog-devices-inc-maxim-integrated/TMC6300-LA-T/12090904",
+    "price": 3.66
+  },
+  {
+    "name": "6N138 optocoupler",
+    "note": "",
+    "category": "ICs and drivers",
+    "supplier": "Digikey",
+    "link": "https://www.digikey.fr/fr/products/detail/liteon/6N138/1969179",
+    "price": 0.78
+  },
+  {
+    "name": "CNY17-1 optocoupler",
+    "note": "",
+    "category": "ICs and drivers",
+    "supplier": "Digikey",
+    "link": "https://www.digikey.fr/fr/products/detail/liteon/CNY17-1/385770",
+    "price": 0.4
+  },
+  {
+    "name": "Adafruit Audio BFF",
+    "note": "Add-on for QT Py and XIAO",
+    "category": "ICs and drivers",
+    "supplier": "Digikey",
+    "link": "https://www.digikey.fr/short/zmjdrfnr",
+    "price": 5.49
+  },
+  {
+    "name": "IRLB8721 MOSFET, logic level",
+    "note": "Pack of 10",
+    "category": "Transistors and passives",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B0CBKFT9DD",
+    "price": 11.98
+  },
+  {
+    "name": "IRFZ44N MOSFET",
+    "note": "Pack of 10",
+    "category": "Transistors and passives",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B08H56RJY9",
+    "price": 8.89
+  },
+  {
+    "name": "CSD18542KCS MOSFET",
+    "note": "",
+    "category": "Transistors and passives",
+    "supplier": "Digikey",
+    "link": "https://www.digikey.fr/en/products/detail/texas-instruments/csd18542kcs/5323978",
+    "price": 2.46
+  },
+  {
+    "name": "SB1100 Schottky diode",
+    "note": "",
+    "category": "Transistors and passives",
+    "supplier": "Digikey",
+    "link": "https://www.digikey.fr/en/products/detail/diotec-semiconductor/SB1100/13163208",
+    "price": 0.25
+  },
+  {
+    "name": "Inductor 47 µH ETQ-P4M470KFM",
+    "note": "",
+    "category": "Transistors and passives",
+    "supplier": "Digikey",
+    "link": "https://www.digikey.fr/en/products/detail/panasonic-electronic-components/etq-p4m470kfm/9765168",
+    "price": 0.7
+  },
+  {
+    "name": "Film capacitor 0.47 µF ECW-FE2W474J",
+    "note": "",
+    "category": "Transistors and passives",
+    "supplier": "Digikey",
+    "link": "https://www.digikey.fr/en/products/detail/panasonic-electronic-components/ecw-fe2w474j/5881195",
+    "price": 0.63
+  },
+  {
+    "name": "Breadboards and Dupont wires",
+    "note": "2 small and 2 big breadboards",
+    "category": "Prototyping",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B0B5TCKTQH",
+    "price": 14.89
+  },
+  {
+    "name": "Push button 6x6x5 mm",
+    "note": "Pack of 100",
+    "category": "Prototyping",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B09WVFHMSV",
+    "price": 6.23
+  },
+  {
+    "name": "Slide switch",
+    "note": "Pack of 200",
+    "category": "Prototyping",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B09TVFF6KW",
+    "price": 8.86
+  },
+  {
+    "name": "CR2032 coin cell",
+    "note": "Pack of 10",
+    "category": "Batteries",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B095P2MJZV",
+    "price": 7.82
+  },
+  {
+    "name": "LIR1654 rechargeable coin cell",
+    "note": "Pack of 4",
+    "category": "Batteries",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B0C61R7156",
+    "price": 11.38
+  },
+  {
+    "name": "LIR2050 rechargeable coin cell",
+    "note": "",
+    "category": "Batteries",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B0C61PTK65",
+    "price": 15.99
+  },
+  {
+    "name": "Lead-free solder 0.8 mm",
+    "note": "50 g",
+    "category": "Consumables",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B07Z75HQD5",
+    "price": 8.32
+  },
+  {
+    "name": "Flux syringe NC191",
+    "note": "",
+    "category": "Consumables",
+    "supplier": "Digikey",
+    "link": "https://www.digikey.fr/fr/products/detail/chip-quik-inc/NC191/11480391",
+    "price": 9.49
+  },
+  {
+    "name": "Heat-shrink tubing spool, ⌀1.2 mm",
+    "note": "",
+    "category": "Consumables",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B07CL2HDW1",
+    "price": 11.42
+  },
+  {
+    "name": "Heat-shrink tubing spool, ⌀1.6 mm",
+    "note": "",
+    "category": "Consumables",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B07CL5QTR1",
+    "price": 11.42
+  },
+  {
+    "name": "Heat-shrink tubing spool, ⌀2.4 mm",
+    "note": "",
+    "category": "Consumables",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B07CLC6XHB",
+    "price": 11.42
+  },
+  {
+    "name": "Heat-shrink tubing spool, ⌀3.2 mm",
+    "note": "",
+    "category": "Consumables",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B07CL4ZXV8",
+    "price": 11.42
+  },
+  {
+    "name": "Heat-shrink tubing spool, ⌀4.8 mm",
+    "note": "",
+    "category": "Consumables",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B07CMXZLJQ",
+    "price": 12.89
+  },
+  {
+    "name": "Heat-shrink tubing spool, ⌀6.4 mm",
+    "note": "",
+    "category": "Consumables",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B07CL67YG7",
+    "price": 12.89
+  },
+  {
+    "name": "Heat-shrink tubing spool, ⌀9.5 mm",
+    "note": "",
+    "category": "Consumables",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B07CMXT3V3",
+    "price": 13.47
+  },
+  {
+    "name": "Nitrile gloves, size L",
+    "note": "Box",
+    "category": "Consumables",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B07TG89CCW",
+    "price": 11.97
+  },
+  {
+    "name": "Storage box 1.4 L",
+    "note": "Pack of 10",
+    "category": "Kit supplies",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B0DF2JRLHM",
+    "price": 19.79
+  }
+]

@@ -42,6 +42,7 @@ export default {
         const userData = useDocument(computed(() => currentUser.value && doc(db, 'admins', currentUser.value.uid)));
         const links = computed(() => [
             { to: '/', label: 'Orders' },
+            { to: '/parts', label: 'Parts' },
             ...(userData.value && userData.value.isIR ? [
                 { to: '/suppliers', label: 'Suppliers' },
                 { to: '/tags', label: 'Tags' },

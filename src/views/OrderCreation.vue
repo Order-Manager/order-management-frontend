@@ -1,5 +1,7 @@
 <script>
     import TagComponent from '../components/Tags.vue'
+    import CatalogPicker from '../components/CatalogPicker.vue'
+    import { cart, partToItem, removeSupplierFromCart } from '../utils/catalog.js'
     import {
         ref
     } from 'vue'
@@ -28,7 +30,17 @@
 
     export default {
         components: {
-            TagComponent
+            TagComponent, CatalogPicker
+        },
+        created() {
+            // Coming from the Parts page: start with that supplier's share of the cart
+            const supplier = this.$route.query.cart;
+            const lines = cart.filter(line => line.supplier === supplier);
+            if (lines.length) {
+                this.items = lines.map(line => partToItem(line, line.quantity));
+                this.fromCart = supplier;
+                this.wantedSupplier = supplier;
+            }
         },
         methods: {
             // One message per field, keyed by the field's id; empty when the form is valid
@@ -107,6 +119,8 @@
                     });
 
                     try { localStorage.setItem('orderTipsSeen', '1') } catch (e) {}
+                    // Those parts are ordered now; the rest of the cart stays for the other suppliers
+                    if (this.fromCart && this.fromCart === this.selectedSupplier.name) removeSupplierFromCart(this.fromCart);
                     this.showSuccess(this.isDraft ? "Draft saved." : "Order created. A referent will review it.");
                     this.$router.push('/');
                 } catch (error) {
@@ -157,6 +171,23 @@
             removeItem(index) {
                 this.items.splice(index, 1);
             },
+            // Rows the student hasn't started filling in
+            isBlank(item) {
+                return !item.name.trim() && !item.link.trim();
+            },
+            addFromCatalog(part) {
+                if (!this.hasItems) {
+                    const supplier = this.suppliers.find(s => s.name === part.supplier);
+                    if (supplier) this.selectedSupplier = supplier;
+                }
+                const existing = this.items.find(item => item.link === part.link);
+                if (existing) {
+                    existing.quantity = Number(existing.quantity) + 1;
+                    return;
+                }
+                // Replace the empty starter row rather than leaving it to fail validation
+                this.items = [...this.items.filter(item => !this.isBlank(item)), partToItem(part)];
+            },
             async pasteItemFromClipboard() {
                 try {
                     const text = await navigator.clipboard.readText();
@@ -198,6 +229,8 @@
                 attempted: false,
                 formMessage: '',
                 submitting: false,
+                fromCart: '', // the supplier whose cart parts this order started with
+                wantedSupplier: '', // supplier to select once the list has loaded
                 tipsOpen: (() => { try { return !localStorage.getItem('orderTipsSeen') } catch (e) { return true } })()
             }
         },
@@ -226,6 +259,9 @@
         computed: {
             referents() {
                 return [...this.referentsRaw].sort((a, b) => displayName(a.email).localeCompare(displayName(b.email)));
+            },
+            hasItems() {
+                return this.items.some(item => !this.isBlank(item));
             },
         },
         watch: {
@@ -256,7 +292,13 @@
             suppliers: {
                 immediate: true,
                 handler() {
-                    this.selectedSupplier = this.suppliers[0];
+                    const wanted = this.suppliers.find(s => s.name === this.wantedSupplier);
+                    if (wanted) {
+                        this.selectedSupplier = wanted;
+                        this.wantedSupplier = '';
+                    } else if (!this.suppliers.some(s => s.id === this.selectedSupplier?.id)) {
+                        this.selectedSupplier = this.suppliers[0];
+                    }
                 }
             }
         }
@@ -404,7 +446,12 @@
                         <button type="button" class="icon-button add-item" v-on:click="pasteItemFromClipboard()" aria-label="Paste item" title="Paste item">
                             <span class="material-symbols-outlined" aria-hidden="true">content_paste</span>
                         </button>
+                        <button type="button" class="add-from-catalog" @click="$refs.picker.open()">
+                            <span class="material-symbols-outlined" aria-hidden="true">inventory_2</span>
+                            Add from catalogue
+                        </button>
                     </div>
+                    <CatalogPicker ref="picker" :supplier="selectedSupplier ? selectedSupplier.name : ''" :locked="hasItems" @add="addFromCatalog" />
                 </div>
             </fieldset>
             <div class="order-form-category">
@@ -584,6 +631,13 @@
 
     .add-item {
         font-size: 2rem;
+        margin: 0.5rem;
+    }
+
+    .add-from-catalog {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-2);
         margin: 0.5rem;
     }
 

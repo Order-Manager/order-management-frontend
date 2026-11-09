@@ -105,12 +105,8 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    match /inventory_categories/{category} {
-      allow read: if isDevinci();
-      allow write: if isAdmin();
-    }
-
-    match /inventory_items/{item} {
+    // Parts the lab usually buys, which students can add to an order in one click
+    match /catalog/{part} {
       allow read: if isDevinci();
       allow write: if isAdmin();
     }

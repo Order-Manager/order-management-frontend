@@ -286,11 +286,23 @@ describe('orders: admin updates', () => {
 })
 
 describe('reference data and admins', () => {
-    test('only admins write suppliers, tags and inventory', async () => {
-        for (const path of ['suppliers/s2', 'tags/t2', 'inventory_items/i1', 'inventory_categories/c1']) {
+    test('only admins write suppliers, tags and the parts catalogue', async () => {
+        for (const path of ['suppliers/s2', 'tags/t2', 'catalog/p1']) {
             await assertFails(setDoc(doc(db(STUDENT), path), { name: 'x' }))
             await assertSucceeds(setDoc(doc(db(ADMIN), path), { name: 'x' }))
         }
+    })
+
+    test('every Devinci user reads the parts catalogue, outsiders do not', async () => {
+        await seed('catalog/p2', { name: 'XIAO ESP32-S3' })
+        await assertSucceeds(getDocs(collection(db(STUDENT), 'catalog')))
+        await assertFails(getDocs(collection(db(OUTSIDER), 'catalog')))
+        await assertFails(getDocs(collection(db(STUDENT, false), 'catalog')))
+    })
+
+    test('the old inventory collections are closed', async () => {
+        await assertFails(getDocs(collection(db(ADMIN), 'inventory_items')))
+        await assertFails(setDoc(doc(db(ADMIN), 'inventory_items/i1'), { name: 'x' }))
     })
 
     test('users read their own admin doc and the referents, nothing else', async () => {

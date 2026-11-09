@@ -61,8 +61,9 @@ await setDoc('admins/not-a-referent', { email: 'former.engineer@devinci.fr', isI
 
 const suppliers = [
     ['rs', 'RS Components', 'https://fr.rs-online.com'],
-    ['amazon', 'Amazon', 'https://www.amazon.fr'],
-    ['mouser', 'Mouser', 'https://www.mouser.fr'],
+    ['amazon', 'Amazon FR', 'https://amazon.fr/'],
+    ['mouser', 'Mouser', 'https://mouser.fr/'],
+    ['digikey', 'Digikey', 'https://www.digikey.fr/'],
     ['lcsc', 'LCSC', 'https://www.lcsc.com'],
 ]
 for (const [id, name, webpage] of suppliers) await setDoc(`suppliers/${id}`, { name, webpage, hidden: false })
@@ -87,7 +88,7 @@ const orders = [
         updates: [created(1), comment(1, STUDENT.email, 'Needed before the demo on Friday if possible.')],
     },
     {
-        id: 'acrylic', owner: STUDENT, status: 'processingOrder', title: 'Acrylic sheets', supplier: 'Amazon', tags: ['fablab'], priority: 'medium', created: 6,
+        id: 'acrylic', owner: STUDENT, status: 'processingOrder', title: 'Acrylic sheets', supplier: 'Amazon FR', tags: ['fablab'], priority: 'medium', created: 6,
         items: [item('Acrylic sheet 3x200x300mm, transparent', 'https://www.amazon.fr/dp/B000000001', 10, 4.5)],
         updates: [created(6), event('review-ir-approved', 5, ADMIN.email)],
     },
@@ -106,7 +107,7 @@ const orders = [
             comment(9, ADMIN.email, 'Ordered with standard shipping, LCSC says 7 to 10 days. I split the connectors into a second parcel because the first one was out of stock; they should arrive a few days later than the rest.')],
     },
     {
-        id: 'filament', owner: STUDENT, status: 'received', title: 'PLA filament', supplier: 'Amazon', tags: ['fablab'], priority: 'low', created: 20,
+        id: 'filament', owner: STUDENT, status: 'received', title: 'PLA filament', supplier: 'Amazon FR', tags: ['fablab'], priority: 'low', created: 20,
         items: [item('PLA 1.75mm 1kg black', 'https://www.amazon.fr/dp/B000000002', 3, 19.99, { ordered: true, delivered: true })],
         updates: [created(20), event('review-ir-approved', 19, ADMIN.email), event('order-processed', 18, ADMIN.email), event('order-received', 15, ADMIN.email)],
     },
@@ -116,12 +117,12 @@ const orders = [
         updates: [created(60), event('review-ir-approved', 59, ADMIN.email), event('order-processed', 58, ADMIN.email), event('order-received', 52, ADMIN.email), event('order-completed', 50, ADMIN.email)],
     },
     {
-        id: 'refused', owner: STUDENT, status: 'refusedIR', title: 'Gaming mouse', supplier: 'Amazon', tags: ['bde'], priority: 'low', created: 30,
+        id: 'refused', owner: STUDENT, status: 'refusedIR', title: 'Gaming mouse', supplier: 'Amazon FR', tags: ['bde'], priority: 'low', created: 30,
         items: [item('Wireless gaming mouse', 'https://www.amazon.fr/dp/B000000003', 1, 89),],
         updates: [created(30), comment(29, ADMIN.email, 'This is not lab equipment, please ask the BDE budget instead.'), event('review-ir-refused', 29, ADMIN.email)],
     },
     {
-        id: 'draft', owner: STUDENT, status: 'draft', title: 'Magnets (draft)', supplier: 'Amazon', tags: ['marblebot'], priority: 'low', created: 2,
+        id: 'draft', owner: STUDENT, status: 'draft', title: 'Magnets (draft)', supplier: 'Amazon FR', tags: ['marblebot'], priority: 'low', created: 2,
         items: [item('Neodymium magnet 10x3mm', 'https://www.amazon.fr/dp/B000000004', 50, 0.3)],
         updates: [created(2)],
     },
@@ -137,7 +138,7 @@ const orders = [
         updates: [created(240)],
     },
     {
-        id: 'stale-refused', owner: STUDENT, status: 'refusedIR', title: 'Old headphones request', supplier: 'Amazon', tags: ['bde'], priority: 'low', created: 220,
+        id: 'stale-refused', owner: STUDENT, status: 'refusedIR', title: 'Old headphones request', supplier: 'Amazon FR', tags: ['bde'], priority: 'low', created: 220,
         items: [item('Headphones', 'https://www.amazon.fr/dp/B000000009', 1, 59)],
         updates: [created(220), event('review-ir-refused', 210, ADMIN.email)],
     },

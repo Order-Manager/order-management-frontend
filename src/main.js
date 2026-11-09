@@ -16,6 +16,7 @@ import Login from "./views/Login.vue";
 import SignOut from "./views/SignOut.vue";
 import SuppliersManagement from "./views/SuppliersManagement.vue";
 import TagsManagement from "./views/TagsManagement.vue";
+import PartsCatalog from "./views/PartsCatalog.vue";
 
 import {
     firebaseApp
@@ -27,9 +28,6 @@ import {
 } from 'vuefire'
 import Toast from "vue-toastification";
 import "vue-toastification/dist/index.css";
-import InventoryList from "./views/InventoryList.vue";
-import InventoryCategory from "./views/InventoryCategory.vue";
-import InventoryView from "./views/InventoryView.vue";
 
 const routes = [{
         path: "/",
@@ -67,21 +65,10 @@ const routes = [{
         meta: { title: "Tags" }
     },
     {
-        path: "/inventory",
-        component: InventoryList,
-        meta: { title: "Inventory" }
+        path: "/parts",
+        component: PartsCatalog,
+        meta: { title: "Parts", requiresAuth: true }
     },
-    {
-        path: "/inventory/category/:id",
-        component: InventoryCategory,
-        meta: { title: "Inventory category" }
-    },
-    {
-        path: "/inventory/item/:id",
-        component: InventoryView,
-        meta: { title: "Inventory item" }
-    },
-
 ];
 
 const router = createRouter({
