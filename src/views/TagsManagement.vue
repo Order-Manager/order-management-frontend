@@ -131,7 +131,7 @@ export default {
         <h1>Tags</h1>
     </div>
 
-    <p v-if="!isAdmin" role="status">{{ userData === undefined ? 'Loading…' : 'Only research engineers can manage tags.' }}</p>
+    <p v-if="!isAdmin" role="status">{{ userData === undefined ? 'Loading…' : 'Only referents can manage tags.' }}</p>
 
     <template v-else>
     <div class="table-scroll">

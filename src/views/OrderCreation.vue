@@ -107,7 +107,7 @@
                     });
 
                     try { localStorage.setItem('orderTipsSeen', '1') } catch (e) {}
-                    this.showSuccess(this.isDraft ? "Draft saved." : "Order created. A research engineer will review it.");
+                    this.showSuccess(this.isDraft ? "Draft saved." : "Order created. A referent will review it.");
                     this.$router.push('/');
                 } catch (error) {
                     console.error("Error creating order:", error);
@@ -213,7 +213,7 @@
             const user = useCurrentUser()
 
             const tags = useCollection(collection(db, 'tags'));
-            // Research engineers students can name as their referent (admins flagged isReferent)
+            // Who students can pick as their referent (admins flagged isReferent)
             const referentsRaw = useCollection(query(collection(db, 'admins'), where('isReferent', '==', true)));
             const selectedTags = ref([]);
 
@@ -294,10 +294,10 @@
                 <div class="field">
                     <select id="referent" name="referent" v-model="referentId" required
                         :aria-invalid="!!fieldError('referent')" aria-describedby="referent-hint referent-error">
-                        <option value="" disabled>Choose a research engineer</option>
+                        <option value="" disabled>Choose your referent</option>
                         <option v-for="referent in referents" :key="referent.id" :value="referent.id">{{ displayName(referent.email) }}</option>
                     </select>
-                    <p id="referent-hint" class="field-hint">The research engineer who follows your project.</p>
+                    <p id="referent-hint" class="field-hint">The referent who follows your project.</p>
                     <p id="referent-error" class="field-error">{{ fieldError('referent') }}</p>
                 </div>
             </div>

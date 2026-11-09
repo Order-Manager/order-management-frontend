@@ -86,7 +86,7 @@ def require_admin(claims: dict, token: str) -> None:
     # The rules only let users read their own admin document, and only admins have one
     response = firestore("GET", f"{DOCS}/admins/{claims['sub']}", token)
     if response.status_code != 200:
-        raise HTTPException(403, "Only research engineers can manage invoices.")
+        raise HTTPException(403, "Only referents can manage invoices.")
 
 
 def get_order(order_id: str, token: str) -> dict:

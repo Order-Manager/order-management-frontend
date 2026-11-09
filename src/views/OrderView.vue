@@ -110,10 +110,10 @@ export default {
                 case 'draft':
                     return this.isAuthor() ? "This is a draft. Submit it when it's ready for review." : "Draft: not submitted yet."
                 case 'pendingIR':
-                    return admin ? "Review this order: approve it, reject it, or ask another research engineer." : "Waiting for a research engineer to review it."
+                    return admin ? "Review this order: approve it, reject it, or ask another referent." : "Waiting for a referent to review it."
                 case 'approvedIR':
                 case 'processingOrder':
-                    return admin ? `Approved. Order it from ${order.supplier}, then mark it as ordered.` : `Approved. A research engineer will order it from ${order.supplier}.`
+                    return admin ? `Approved. Order it from ${order.supplier}, then mark it as ordered.` : `Approved. A referent will order it from ${order.supplier}.`
                 case 'ordered':
                     return admin ? "Mark the items as delivered when they arrive." : `Ordered from ${order.supplier}. You'll get an email when it arrives.`
                 case 'received':
@@ -160,7 +160,7 @@ export default {
                 }
                 await updateDoc(orderRef, { "status": "pendingIR" })
                 if (this.$refs.justifyDialog.open) this.$refs.justifyDialog.close()
-                this.showSuccess("Order submitted. A research engineer will review it.")
+                this.showSuccess("Order submitted. A referent will review it.")
             } catch (error) {
                 this.showError("Could not submit the order: " + error.message)
             } finally {
@@ -759,7 +759,7 @@ export default {
         <dialog ref="justifyDialog" class="dialog" aria-labelledby="justify-title">
             <form @submit.prevent="submitJustification()" novalidate>
                 <h2 id="justify-title">Why do you need these parts?</h2>
-                <p>Research engineers read this before approving your order.</p>
+                <p>Referents read this before approving your order.</p>
                 <label for="justification">Justification</label>
                 <textarea
                     id="justification"

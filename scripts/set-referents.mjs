@@ -1,4 +1,4 @@
-// Marks which research engineers students can pick as their referent (admins/{uid}.isReferent).
+// Marks which admins students can pick as their referent (admins/{uid}.isReferent).
 // Every admin becomes a referent except the excluded emails. Uses your gcloud login; dry run by default.
 //
 //   node scripts/set-referents.mjs --project orders-server --exclude madalina.nicolae@devinci.fr,antoine.pradoura@devinci.fr

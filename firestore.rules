@@ -14,7 +14,7 @@ service cloud.firestore {
       return isDevinci() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
-    // The research engineer a student names as their referent: an admin flagged isReferent
+    // The referent a student names on an order: an admin flagged isReferent
     function isReferent(data) {
       let path = /databases/$(database)/documents/admins/$(data.referentId);
       return data.referentId is string

@@ -167,7 +167,7 @@ def updateLastUpdate(event: firestore_fn.Event[firestore_fn.DocumentSnapshot | N
             sendEmail(
                 to=after.get("requestedBy"),
                 subject="Your order has been rejected",
-                message=f"Your order '{escape(str(after.get('title')))}' has been rejected by {escape(str(after.get('reviewIRBy')))}. Please contact the Research Engineer for more information."
+                message=f"Your order '{escape(str(after.get('title')))}' has been rejected by {escape(str(after.get('reviewIRBy')))}. Please contact your referent for more information."
             )
 
             event.data.after.reference.update({

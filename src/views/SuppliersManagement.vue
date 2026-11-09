@@ -124,7 +124,7 @@ export default {
         <h1>Suppliers</h1>
     </div>
 
-    <p v-if="!isAdmin" role="status">{{ userData === undefined ? 'Loading…' : 'Only research engineers can manage suppliers.' }}</p>
+    <p v-if="!isAdmin" role="status">{{ userData === undefined ? 'Loading…' : 'Only referents can manage suppliers.' }}</p>
 
     <template v-else>
     <div class="table-scroll">
