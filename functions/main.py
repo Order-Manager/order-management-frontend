@@ -50,6 +50,21 @@ def addUpdatesOnCreation(event: firestore_fn.Event[firestore_fn.DocumentSnapshot
     # Every order carries "archived" so the lists can filter on it in the query
     event.data.reference.update({"updates": updates, "archived": False})
 
+    if event.data.get("status") == "pendingIR":
+        notifyReferent(event.data.to_dict(), event.data.id)
+
+
+# Tells the referent named on an order that it is waiting for review
+def notifyReferent(order: dict, order_id: str) -> None:
+    referent = order.get("referent")
+    if not referent:
+        return
+    sendEmail(
+        to=referent,
+        subject="New order to review",
+        message=f"{escape(str(order.get('requestedBy')))} submitted the order '{escape(str(order.get('title')))}' and named you as their referent. Please review it <a href='{APP_URL}/#/view/{escape(str(order_id))}'>here</a>."
+    )
+
 
 @firestore_fn.on_document_updated(document="orders/{orderId}", region=REGION)
 def updateLastUpdate(event: firestore_fn.Event[firestore_fn.DocumentSnapshot | None]) -> None:
@@ -113,6 +128,10 @@ def updateLastUpdate(event: firestore_fn.Event[firestore_fn.DocumentSnapshot | N
         )
 
     if before.get("status") != after.get("status"):
+
+        # A draft submitted for review
+        if before.get("status") == "draft" and after.get("status") == "pendingIR":
+            notifyReferent(after, event.data.after.id)
 
         current_updates = before.get("updates")
         if after.get("status") == "cancelled":
