@@ -3,6 +3,7 @@
 //
 //   node scripts/seed-catalog.mjs --project orders-server-dev
 //   ... --apply      writes
+//   ... --prune      also deletes catalogue parts that aren't in the list, including ones added by hand
 //   FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 node scripts/seed-catalog.mjs --project demo-orders --apply
 
 import { execSync } from 'node:child_process'
@@ -13,6 +14,7 @@ const option = (name) => { const i = args.indexOf(name); return i === -1 ? undef
 const project = option('--project')
 if (!project) throw new Error('usage: node scripts/seed-catalog.mjs --project <id> [--apply]')
 const apply = args.includes('--apply')
+const prune = args.includes('--prune')
 
 const emulator = process.env.FIRESTORE_EMULATOR_HOST
 const token = emulator ? 'owner' : execSync('gcloud auth print-access-token').toString().trim()
@@ -25,8 +27,8 @@ const key = (p) => [p.name, p.note, p.supplier].join('|')
 const res = await fetch(`${API}/catalog?pageSize=1000`, { headers })
 if (!res.ok) throw new Error(`${res.status} ${await res.text()}`)
 const { documents = [] } = await res.json()
-const existing = new Set(documents.map(d => key(Object.fromEntries(
-    ['name', 'note', 'supplier'].map(f => [f, d.fields[f]?.stringValue || ''])))))
+const keyOf = (d) => key(Object.fromEntries(['name', 'note', 'supplier'].map(f => [f, d.fields[f]?.stringValue || ''])))
+const existing = new Set(documents.map(keyOf))
 
 const suppliers = (await (await fetch(`${API}/suppliers?pageSize=300`, { headers })).json()).documents || []
 const supplierNames = new Set(suppliers.map(s => s.fields.name?.stringValue.trim()))
@@ -55,5 +57,16 @@ for (const part of parts) {
     const write = await fetch(`${API}/catalog`, { method: 'POST', headers, body: JSON.stringify({ fields }) })
     if (!write.ok) throw new Error(`${part.name}: ${write.status} ${await write.text()}`)
 }
-console.log(`${added} to add, ${parts.length - added} already there.`)
+let removed = 0
+if (prune) {
+    const wanted = new Set(parts.map(key))
+    for (const d of documents.filter(d => !wanted.has(keyOf(d)))) {
+        console.log(`remove  ${d.fields.name?.stringValue} ${d.fields.note?.stringValue || ''}`)
+        removed++
+        if (!apply) continue
+        const write = await fetch(`${emulator ? `http://${emulator}` : 'https://firestore.googleapis.com'}/v1/${d.name}`, { method: 'DELETE', headers })
+        if (!write.ok) throw new Error(`${d.name}: ${write.status} ${await write.text()}`)
+    }
+}
+console.log(`${added} to add, ${parts.length - added} already there${prune ? `, ${removed} to remove` : ''}.`)
 console.log(apply ? 'Done.' : 'Dry run: nothing written. Add --apply to write.')
