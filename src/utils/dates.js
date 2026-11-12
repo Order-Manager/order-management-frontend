@@ -44,6 +44,11 @@ export function formatEuros(amount) {
 }
 
 // Items store quantity and price as strings
+export function itemTotal(item) {
+    return (parseFloat(item.price) || 0) * (parseFloat(item.quantity) || 0);
+}
+
+// Rejected items won't be bought, so they don't count
 export function orderTotal(items) {
-    return (items || []).reduce((sum, item) => sum + (parseFloat(item.price) || 0) * (parseFloat(item.quantity) || 0), 0);
+    return (items || []).reduce((sum, item) => sum + (item.rejected ? 0 : itemTotal(item)), 0);
 }

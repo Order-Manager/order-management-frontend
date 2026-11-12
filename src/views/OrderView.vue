@@ -17,7 +17,7 @@ import OrderProgress from '../components/OrderProgress.vue'
 import InvoicesPanel from '../components/InvoicesPanel.vue'
 import StockBadge from '../components/StockBadge.vue'
 import { STOCK_LEVELS, normalizeLink, partsByLink } from '../utils/catalog.js'
-import { formatEuros, orderTotal } from '../utils/dates.js'
+import { formatEuros, orderTotal, itemTotal } from '../utils/dates.js'
 import { displayName } from '../utils/people.js'
 
 
@@ -90,6 +90,73 @@ export default {
                 this.busy = false
             }
         },
+        // Referents can turn down single items while the order hasn't been placed yet
+        canRejectItems() {
+            return this.isReviewer() && !this.editingItems && ['pendingIR', 'processingOrder'].includes(this.order.status)
+        },
+        openRejectItemDialog(index) {
+            const kept = this.order.items.filter(item => !item.rejected).length
+            if (kept <= 1) {
+                this.showWarning("This is the last item left: reject the whole order instead.")
+                return
+            }
+            this.rejectItemIndex = index
+            this.rejectItemReason = ""
+            this.rejectItemError = ""
+            this.$refs.rejectItemDialog.showModal()
+        },
+        // Same order of writes as rejecting the order: the comment (which emails the student), then the items
+        async confirmRejectItem() {
+            const reason = this.rejectItemReason.trim()
+            if (!reason) {
+                this.rejectItemError = "Please give a reason: the student will receive it by email."
+                this.$refs.rejectItemReason.focus()
+                return
+            }
+            const item = this.order.items[this.rejectItemIndex]
+            this.busy = true
+            try {
+                await this.postItemComment(`Item rejected: “${item.name}”. ${reason}`)
+                await this.writeItems(this.order.items.map((it, i) => i === this.rejectItemIndex
+                    ? { ...it, rejected: true, rejectedReason: reason, rejectedBy: this.currentUser.email, rejectedAt: new Date() }
+                    : it))
+                this.$refs.rejectItemDialog.close()
+                this.showSuccess(`Item rejected. ${this.order.requestedBy} will get your reason by email.`)
+            } catch (error) {
+                this.showError("Could not reject the item: " + error.message)
+            } finally {
+                this.busy = false
+            }
+        },
+        async restoreItem(index) {
+            const item = this.order.items[index]
+            this.busy = true
+            try {
+                await this.postItemComment(`Item restored: “${item.name}” will be ordered after all.`)
+                await this.writeItems(this.order.items.map((it, i) => {
+                    if (i !== index) return it
+                    const { rejected, rejectedReason, rejectedBy, rejectedAt, ...rest } = it
+                    return rest
+                }))
+                this.showSuccess(`${item.name} restored.`)
+            } catch (error) {
+                this.showError("Could not restore the item: " + error.message)
+            } finally {
+                this.busy = false
+            }
+        },
+        postItemComment(message) {
+            return updateDoc(doc(useFirestore(), 'orders', this.order_id), {
+                "updates": arrayUnion({ "type": "comment", "date": new Date(), "author": this.currentUser.email, "message": message })
+            })
+        },
+        writeItems(items) {
+            return updateDoc(doc(useFirestore(), 'orders', this.order_id), {
+                items,
+                "lastItemsUpdatedBy": this.currentUser.email,
+                "ignoreItemsModification": true,
+            })
+        },
         // Archiving notifies nobody. lastUpdate moves by 1 ms so the update function, which stamps
         // "now" only when lastUpdate is unchanged, leaves the order's date as it was.
         async setArchived(archived) {
@@ -138,7 +205,7 @@ export default {
         isEnded() {
             return ['refusedIR', 'cancelled'].includes(this.order.status)
         },
-        formatEuros, orderTotal, displayName,
+        formatEuros, orderTotal, itemTotal, displayName,
         // Drafts can be saved without a full justification; ask for one before they go to review
         publishOrder() {
             if ((this.order.comment || "").trim().length >= MIN_JUSTIFICATION) {
@@ -310,15 +377,16 @@ export default {
         updateItemStatus(index, field, value) {
             this.order.items[index][field] = value;
 
-            if (this.order.status == "processingOrder" && this.order.items.every(item => item.ordered)) {
+            // Rejected items won't be bought, so they don't hold the order back
+            if (this.order.status == "processingOrder" && this.order.items.every(item => item.rejected || item.ordered)) {
                 this.setOrderStatus("ordered");
             }
 
-            if (this.order.status == "ordered" && this.order.items.every(item => item.delivered)) {
+            if (this.order.status == "ordered" && this.order.items.every(item => item.rejected || item.delivered)) {
                 this.setOrderStatus("received");
             }
 
-            if (this.order.status == "received" && this.order.items.every(item => item.completed)) {
+            if (this.order.status == "received" && this.order.items.every(item => item.rejected || item.completed)) {
                 this.setOrderStatus("completed");
             }
 
@@ -394,6 +462,7 @@ export default {
             this.showInfo("Item removed.");
         },
         getItemNextStatus(item) {
+            if (item.rejected) return "none";
             if (item.completed) return "none";
             if (this.order.status == "completed") return "none";
             if (item.delivered) return "completed";
@@ -404,6 +473,7 @@ export default {
             return "none";
         },
         getItemStatus(item) {
+            if (item.rejected) return "rejected";
             if (item.completed) return "completed";
             if (this.order.status == "completed") return "completed";
             if (item.delivered) return "delivered";
@@ -414,6 +484,7 @@ export default {
         },
         getItemStatusColor(item) {
             let status = this.getItemStatus(item);
+            if (status == "rejected") return "red";
             if (status == "completed") return "green";
             if (status == "delivered") return "blue";
             if (status == "ordered") return "blue";
@@ -464,6 +535,9 @@ export default {
             justification: "",
             justificationError: "",
             rejectError: "",
+            rejectItemIndex: -1,
+            rejectItemReason: "",
+            rejectItemError: "",
             busy: false,
         };
     },
@@ -590,19 +664,39 @@ export default {
                             </td>
                         </template>
                         <template v-else>
-                            <td class="col-name">{{ item.name }} <StockBadge compact :stock="stockFor(item)" /></td>
+                            <td class="col-name">
+                                <span :class="{ 'rejected-name': item.rejected }">{{ item.name }}</span>
+                                <StockBadge v-if="!item.rejected" compact :stock="stockFor(item)" />
+                                <span v-if="item.rejected" class="item-rejection">
+                                    Rejected by {{ displayName(item.rejectedBy) }}<template v-if="item.rejectedReason">: {{ item.rejectedReason }}</template>
+                                </span>
+                            </td>
                             <td class="col-link item-link"><a :href="item.link" :title="item.link" target="_blank" rel="noopener">{{ item.link }}<span class="visually-hidden"> (opens in a new tab)</span></a></td>
                             <td class="col-qty" data-label="Quantity">{{ item.quantity }}</td>
                             <td class="col-price" data-label="Unit price">{{ formatEuros(parseFloat(item.price)) }}</td>
-                            <td class="col-total" data-label="Total">{{ formatEuros(orderTotal([item])) }}</td>
+                            <td class="col-total" data-label="Total">
+                                <s v-if="item.rejected"><span class="visually-hidden">Not counted: </span>{{ formatEuros(itemTotal(item)) }}</s>
+                                <template v-else>{{ formatEuros(itemTotal(item)) }}</template>
+                            </td>
                             <td class="col-actions">
-                                <button v-if="isReviewer() && getItemNextStatus(item) != 'none'" type="button"
-                                    v-on:click="updateItemStatus(index, getItemNextStatus(item), true)" class="mark-item">
-                                    Mark as {{ getItemNextStatus(item) }}<span class="visually-hidden">: {{ item.name }}</span>
-                                </button>
-                                <span v-else class="order-item-status" :class="getItemStatusColor(item)">
-                                    {{ getItemStatus(item) }}
-                                </span>
+                                <div class="item-actions">
+                                    <button v-if="isReviewer() && getItemNextStatus(item) != 'none'" type="button"
+                                        v-on:click="updateItemStatus(index, getItemNextStatus(item), true)" class="mark-item">
+                                        Mark as {{ getItemNextStatus(item) }}<span class="visually-hidden">: {{ item.name }}</span>
+                                    </button>
+                                    <span v-else class="order-item-status" :class="getItemStatusColor(item)">
+                                        {{ getItemStatus(item) }}
+                                    </span>
+                                    <template v-if="canRejectItems()">
+                                        <button v-if="item.rejected" type="button" :disabled="busy" @click="restoreItem(index)">
+                                            Restore<span class="visually-hidden"> {{ item.name }}</span>
+                                        </button>
+                                        <button v-else-if="!item.ordered" type="button" class="icon-button red" :disabled="busy"
+                                            :aria-label="`Reject item: ${item.name}`" title="Reject this item" @click="openRejectItemDialog(index)">
+                                            <span class="material-symbols-outlined" aria-hidden="true">block</span>
+                                        </button>
+                                    </template>
+                                </div>
                             </td>
                         </template>
                     </tr>
@@ -780,6 +874,32 @@ export default {
             </form>
         </dialog>
 
+        <dialog ref="rejectItemDialog" class="dialog" aria-labelledby="reject-item-title">
+            <form @submit.prevent="confirmRejectItem()" novalidate>
+                <h2 id="reject-item-title">Reject this item?</h2>
+                <p>
+                    <strong>{{ order.items[rejectItemIndex] && order.items[rejectItemIndex].name }}</strong> won't be ordered;
+                    the rest of the order goes on. {{ order.requestedBy }} will receive your reason by email.
+                </p>
+                <label for="reject-item-reason">Reason</label>
+                <textarea
+                    id="reject-item-reason"
+                    ref="rejectItemReason"
+                    v-model="rejectItemReason"
+                    rows="3"
+                    maxlength="1000"
+                    required
+                    :aria-invalid="!!rejectItemError"
+                    aria-describedby="reject-item-error"
+                ></textarea>
+                <p id="reject-item-error" class="field-error" role="alert">{{ rejectItemError }}</p>
+                <div class="dialog-actions">
+                    <button type="button" @click="$refs.rejectItemDialog.close()">Keep it</button>
+                    <button type="submit" class="danger" :disabled="busy">Reject item</button>
+                </div>
+            </form>
+        </dialog>
+
         <dialog ref="justifyDialog" class="dialog" aria-labelledby="justify-title">
             <form @submit.prevent="submitJustification()" novalidate>
                 <h2 id="justify-title">Why do you need these parts?</h2>
@@ -926,6 +1046,25 @@ export default {
     text-transform: capitalize;
 }
 
+.item-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+}
+
+.rejected-name {
+    text-decoration: line-through;
+    color: var(--text-muted);
+}
+
+.item-rejection {
+    display: block;
+    margin-top: var(--space-1);
+    font-size: var(--font-sm);
+    color: var(--red);
+}
+
 #tags-div {
     display: flex;
     flex-direction: row;
@@ -1004,8 +1143,12 @@ export default {
         padding-top: 0.5rem;
     }
 
-    .orderview-table .col-actions button {
-        width: 100%;
+    .orderview-table .col-actions button:not(.icon-button) {
+        flex: 1;
+    }
+
+    .orderview-table .item-actions {
+        justify-content: flex-start;
     }
 
     .orderview-table .col-actions .center-both {
