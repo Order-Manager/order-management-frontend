@@ -159,7 +159,7 @@ for (const o of orders) {
     await setDoc(`orders/${o.id}`, {
         creationDate: daysAgo(o.created), lastUpdate: total, requestedBy: o.owner.email, requestedById: o.owner.uid,
         status: o.status, title: o.title, supplier: o.supplier, items: o.items, comment: '', updates: o.updates,
-        tags: o.tags, priority: o.priority, ...(o.cancelledBy ? { cancelledBy: o.cancelledBy } : {}),
+        tags: o.tags, priority: o.priority, archived: false, ...(o.cancelledBy ? { cancelledBy: o.cancelledBy } : {}),
     })
 }
 
