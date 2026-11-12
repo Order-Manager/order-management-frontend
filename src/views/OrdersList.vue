@@ -16,6 +16,8 @@ const STAGES = [
   { status: "processingOrder", title: "To order" },
   { status: "ordered", title: "Waiting for delivery" },
   { status: "received", title: "Ready for pick-up" },
+  // Not the referents' turn, but kept in view so these orders don't drop out of sight
+  { status: "changesRequested", title: "Waiting for the student" },
 ];
 
 export default {
@@ -29,10 +31,10 @@ export default {
     const views = computed(() => [
       isAdmin.value
         ? { id: "active", label: "Needs action", statuses: STAGES.map(stage => stage.status), paged: false }
-        : { id: "active", label: "Active", statuses: ["draft", "pendingIR", "processingOrder", "ordered", "received"], paged: false },
+        : { id: "active", label: "Active", statuses: ["draft", "changesRequested", "pendingIR", "processingOrder", "ordered", "received"], paged: false },
       { id: "completed", label: "Completed", statuses: ["completed"], paged: true },
       { id: "closed", label: "Rejected & cancelled", statuses: ["refusedIR", "cancelled"], paged: true },
-      { id: "all", label: "All", statuses: ["draft", "pendingIR", "processingOrder", "ordered", "received", "completed", "refusedIR", "cancelled"], paged: true },
+      { id: "all", label: "All", statuses: ["draft", "changesRequested", "pendingIR", "processingOrder", "ordered", "received", "completed", "refusedIR", "cancelled"], paged: true },
       // Archived orders, whatever their status, live only here
       { id: "archived", label: "Archived", statuses: null, archived: true, paged: true },
     ]);

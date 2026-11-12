@@ -2,7 +2,7 @@
 import { computed, ref } from "vue";
 
 import { useDocument, useFirestore, useCurrentUser, useCollection } from 'vuefire'
-import { doc, updateDoc, collection, arrayUnion, Timestamp } from "firebase/firestore";
+import { doc, updateDoc, collection, arrayUnion, Timestamp, serverTimestamp } from "firebase/firestore";
 
 
 import { useRoute } from 'vue-router'
@@ -89,6 +89,74 @@ export default {
             } finally {
                 this.busy = false
             }
+        },
+        // Ticket-style loop: the referent asks for changes, the student makes them and sends the order back.
+        // The message travels with the status change; the update function puts it in the history and emails it.
+        openChangesDialog() {
+            this.changesMessage = ""
+            this.changesError = ""
+            this.$refs.changesDialog.showModal()
+        },
+        async confirmRequestChanges() {
+            const message = this.changesMessage.trim()
+            if (!message) {
+                this.changesError = "Say what needs to change: the student will receive it by email."
+                this.$refs.changesMessage.focus()
+                return
+            }
+            this.busy = true
+            try {
+                await updateDoc(doc(useFirestore(), 'orders', this.order_id), {
+                    "status": "changesRequested",
+                    "changesRequestedBy": this.currentUser.email,
+                    "changesRequestedMessage": message,
+                    "changesRequestedAt": new Date(),
+                })
+                this.$refs.changesDialog.close()
+                this.showSuccess(`Changes requested. ${this.order.requestedBy} will get your message by email.`)
+            } catch (error) {
+                this.showError("Could not request changes: " + error.message)
+            } finally {
+                this.busy = false
+            }
+        },
+        openSendBackDialog() {
+            if (this.editingItems) {
+                this.showWarning("Save your item changes first.")
+                return
+            }
+            this.sendBackMessage = ""
+            this.sendBackError = ""
+            this.$refs.sendBackDialog.showModal()
+        },
+        async confirmSendBack() {
+            const message = this.sendBackMessage.trim()
+            if (!message) {
+                this.sendBackError = "Say what you changed, so the referent knows what to look at."
+                this.$refs.sendBackMessage.focus()
+                return
+            }
+            this.busy = true
+            try {
+                await updateDoc(doc(useFirestore(), 'orders', this.order_id), {
+                    "status": "pendingIR",
+                    "sentBackMessage": message,
+                    "sentBackAt": serverTimestamp(),
+                })
+                this.$refs.sendBackDialog.close()
+                this.showSuccess("Sent back for review. Your referent will get an email.")
+            } catch (error) {
+                this.showError("Could not send the order back: " + error.message)
+            } finally {
+                this.busy = false
+            }
+        },
+        // While editing, a rejected item can be put back as it is; the referent sees it on the next review
+        putBack(item) {
+            delete item.rejected
+            delete item.rejectedReason
+            delete item.rejectedBy
+            delete item.rejectedAt
         },
         // Referents can turn down single items while the order hasn't been placed yet
         canRejectItems() {
@@ -183,6 +251,10 @@ export default {
             switch (order.status) {
                 case 'draft':
                     return this.isAuthor() ? "This is a draft. Submit it when it's ready for review." : "Draft: not submitted yet."
+                case 'changesRequested':
+                    return this.isAuthor()
+                        ? "Your referent asked for changes. Edit your items if needed, then send the order back for review."
+                        : "Waiting for the student to make the changes and send the order back."
                 case 'pendingIR':
                     return admin ? "Review this order: approve it, reject it, or ask another referent." : "Waiting for a referent to review it."
                 case 'approvedIR':
@@ -370,7 +442,7 @@ export default {
         },
         canEdit() {
             return (
-                this.isAuthor() && this.order.status === "pendingIR"
+                this.isAuthor() && ["pendingIR", "changesRequested"].includes(this.order.status)
                 || this.isReviewer()
             );
         },
@@ -535,6 +607,10 @@ export default {
             justification: "",
             justificationError: "",
             rejectError: "",
+            changesMessage: "",
+            changesError: "",
+            sendBackMessage: "",
+            sendBackError: "",
             rejectItemIndex: -1,
             rejectItemReason: "",
             rejectItemError: "",
@@ -593,6 +669,13 @@ export default {
                 <span class="material-symbols-outlined" aria-hidden="true">{{ isEnded() ? 'info' : 'arrow_forward' }}</span>
                 {{ nextStep() }}
             </p>
+            <div v-if="order.status === 'changesRequested' && order.changesRequestedMessage" class="changes-note">
+                <span class="material-symbols-outlined" aria-hidden="true">rate_review</span>
+                <div>
+                    <p class="changes-note-title">{{ displayName(order.changesRequestedBy) }} asked for changes <RelativeTime v-if="order.changesRequestedAt" :value="order.changesRequestedAt" /></p>
+                    <p class="changes-note-message">{{ order.changesRequestedMessage }}</p>
+                </div>
+            </div>
             <p v-if="order.archived" class="archived-note">
                 <span class="material-symbols-outlined" aria-hidden="true">inventory_2</span>
                 <span>{{ order.archivedAt ? 'Archived ' : 'Archived' }}<RelativeTime v-if="order.archivedAt" :value="order.archivedAt" />. It only appears under Archived in the order list.</span>
@@ -647,7 +730,13 @@ export default {
                 <tbody>
                     <tr v-for="(item, index) in order.items" :key="index">
                         <template v-if="editingItems">
-                            <td class="col-name" data-label="Name"><input type="text" v-model="item.name" required :aria-label="`Item ${index + 1} name`"></td>
+                            <td class="col-name" data-label="Name">
+                                <input type="text" v-model="item.name" required :aria-label="`Item ${index + 1} name`">
+                                <p v-if="item.rejected" class="item-rejection">
+                                    Rejected<template v-if="item.rejectedReason">: {{ item.rejectedReason }}</template>
+                                    <button type="button" class="put-back" @click="putBack(item)">Put back<span class="visually-hidden"> {{ item.name }}</span></button>
+                                </p>
+                            </td>
                             <td class="col-link" data-label="Link"><input type="url" v-model="item.link" required :aria-label="`Item ${index + 1} link`"></td>
                             <td class="col-qty" data-label="Quantity"><input type="number" inputmode="numeric" v-model="item.quantity" required min="1" :aria-label="`Item ${index + 1} quantity`"></td>
                             <td class="col-price" data-label="Unit price (€)"><input type="number" inputmode="decimal" v-model="item.price" min="0.00" max="10000.00" step="0.001" required :aria-label="`Item ${index + 1} unit price in euros`"></td>
@@ -766,8 +855,20 @@ export default {
                 Mark as completed
             </button>
 
-            <button type="button" class="danger"
+            <button type="button" class="primary"
+                v-if="isAuthor() && order.status === 'changesRequested'"
+                :disabled="busy" @click="openSendBackDialog()">
+                Send back for review
+            </button>
+
+            <button type="button"
                 v-if="isReviewer() && ['pendingIR', 'processingOrder'].includes(order.status)"
+                @click="openChangesDialog()">
+                Request changes
+            </button>
+
+            <button type="button" class="danger"
+                v-if="isReviewer() && ['pendingIR', 'processingOrder', 'changesRequested'].includes(order.status)"
                 v-on:click="openRejectDialog()">
                 Reject order
             </button>
@@ -780,7 +881,7 @@ export default {
             </button>
 
             <button type="button" class="danger"
-                v-if="isAuthor() && ['draft', 'pendingIR'].includes(order.status)"
+                v-if="isAuthor() && ['draft', 'pendingIR', 'changesRequested'].includes(order.status)"
                 v-on:click="$refs.cancelDialog.showModal()">
                 Cancel order
             </button>
@@ -870,6 +971,57 @@ export default {
                 <div class="dialog-actions">
                     <button type="button" @click="$refs.rejectDialog.close()">Keep reviewing</button>
                     <button type="submit" class="danger" :disabled="busy">Reject order</button>
+                </div>
+            </form>
+        </dialog>
+
+        <dialog ref="changesDialog" class="dialog" aria-labelledby="changes-title">
+            <form @submit.prevent="confirmRequestChanges()" novalidate>
+                <h2 id="changes-title">Request changes</h2>
+                <p>
+                    The order goes back to {{ order.requestedBy }}, who gets your message by email, makes the changes
+                    and sends it back for review.<template v-if="order.status === 'processingOrder'"> It will need approving again.</template>
+                </p>
+                <label for="changes-message">What should change?</label>
+                <textarea
+                    id="changes-message"
+                    ref="changesMessage"
+                    v-model="changesMessage"
+                    rows="4"
+                    maxlength="1000"
+                    required
+                    placeholder="e.g. The servo you picked is out of stock: choose another one, or explain why you need this exact model."
+                    :aria-invalid="!!changesError"
+                    aria-describedby="changes-error"
+                ></textarea>
+                <p id="changes-error" class="field-error" role="alert">{{ changesError }}</p>
+                <div class="dialog-actions">
+                    <button type="button" @click="$refs.changesDialog.close()">Keep reviewing</button>
+                    <button type="submit" class="primary" :disabled="busy">Request changes</button>
+                </div>
+            </form>
+        </dialog>
+
+        <dialog ref="sendBackDialog" class="dialog" aria-labelledby="send-back-title">
+            <form @submit.prevent="confirmSendBack()" novalidate>
+                <h2 id="send-back-title">Send back for review</h2>
+                <p>Your referent gets an email with your reply and reviews the order again.</p>
+                <label for="send-back-message">What did you change?</label>
+                <textarea
+                    id="send-back-message"
+                    ref="sendBackMessage"
+                    v-model="sendBackMessage"
+                    rows="4"
+                    maxlength="1000"
+                    required
+                    placeholder="e.g. Replaced the servo with the SG90 from the catalogue. I put the cables back: we need 6 and the lab has only 2."
+                    :aria-invalid="!!sendBackError"
+                    aria-describedby="send-back-error"
+                ></textarea>
+                <p id="send-back-error" class="field-error" role="alert">{{ sendBackError }}</p>
+                <div class="dialog-actions">
+                    <button type="button" @click="$refs.sendBackDialog.close()">Not yet</button>
+                    <button type="submit" class="primary" :disabled="busy">Send back</button>
                 </div>
             </form>
         </dialog>
@@ -986,6 +1138,42 @@ export default {
 
 .next-step.ended .material-symbols-outlined {
     color: var(--text-muted);
+}
+
+.changes-note {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    margin: calc(-1 * var(--space-3)) 0 0 0;
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius);
+    border: 1px solid var(--orange);
+    background-color: color-mix(in oklch, var(--orange) 10%, var(--bg));
+}
+
+.changes-note .material-symbols-outlined {
+    color: var(--orange);
+}
+
+.changes-note p {
+    margin: 0;
+}
+
+.changes-note-title {
+    font-size: var(--font-sm);
+    color: var(--text-muted);
+}
+
+.changes-note-message {
+    color: var(--text);
+    white-space: pre-line;
+}
+
+.put-back {
+    margin-left: var(--space-2);
+    min-height: 2rem;
+    padding: 0 var(--space-3);
+    font-size: var(--font-sm);
 }
 
 .archived-note {

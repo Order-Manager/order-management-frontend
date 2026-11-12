@@ -134,6 +134,36 @@ def updateLastUpdate(event: firestore_fn.Event[firestore_fn.DocumentSnapshot | N
             notifyReferent(after, event.data.after.id)
 
         current_updates = before.get("updates")
+        order_link = f"<a href='{APP_URL}/#/view/{escape(str(event.data.after.id))}'>here</a>"
+
+        # The referent asked for changes: their message goes in the history as a comment, in one email
+        if after.get("status") == "changesRequested":
+            referent = after.get("changesRequestedBy")
+            message = after.get("changesRequestedMessage") or ""
+            now = datetime.datetime.now()
+            current_updates.append({"type": "comment", "date": now, "author": referent, "message": message})
+            current_updates.append({"type": "changes-requested", "date": now, "author": referent})
+            event.data.after.reference.update({"updates": current_updates, "lastUpdate": now})
+            sendEmail(
+                to=after.get("requestedBy"),
+                subject="Changes requested on your order",
+                message=f"{escape(str(referent))} asked for changes to your order '{escape(str(after.get('title')))}':<br><br>{escape(message)}<br><br>Update your order and send it back for review {order_link}."
+            )
+
+        # The student made the changes and sent the order back, with a reply
+        elif before.get("status") == "changesRequested" and after.get("status") == "pendingIR":
+            student = after.get("requestedBy")
+            message = after.get("sentBackMessage") or ""
+            now = datetime.datetime.now()
+            current_updates.append({"type": "comment", "date": now, "author": student, "message": message})
+            current_updates.append({"type": "sent-back", "date": now, "author": student})
+            event.data.after.reference.update({"updates": current_updates, "lastUpdate": now})
+            sendEmail(
+                to=after.get("changesRequestedBy") or after.get("referent"),
+                subject="Order sent back for review",
+                message=f"{escape(str(student))} updated the order '{escape(str(after.get('title')))}' and sent it back for review:<br><br>{escape(message)}<br><br>Review it {order_link}."
+            )
+
         if after.get("status") == "cancelled":
 
             update = {

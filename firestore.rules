@@ -41,17 +41,28 @@ service cloud.firestore {
 
     function isCancel() {
       return changedKeys().hasOnly(['status', 'cancelledBy'])
-        && resource.data.status in ['draft', 'pendingIR']
+        && resource.data.status in ['draft', 'pendingIR', 'changesRequested']
         && request.resource.data.status == 'cancelled'
         && request.resource.data.cancelledBy == request.auth.token.email;
     }
 
-    // Owners can edit items while the order waits for review
+    // Owners can edit items while the order waits for review, or when the referent asked for changes
     function isItemsEdit() {
       return changedKeys().hasOnly(['items', 'lastItemsUpdatedBy', 'ignoreItemsModification'])
-        && resource.data.status == 'pendingIR'
+        && resource.data.status in ['pendingIR', 'changesRequested']
         && request.resource.data.items is list
         && request.resource.data.lastItemsUpdatedBy == request.auth.token.email;
+    }
+
+    // Changes made: back to review, with a reply saying what changed (the function adds it to the history)
+    function isSendBack() {
+      return changedKeys().hasOnly(['status', 'sentBackMessage', 'sentBackAt'])
+        && resource.data.status == 'changesRequested'
+        && request.resource.data.status == 'pendingIR'
+        && request.resource.data.sentBackMessage is string
+        && request.resource.data.sentBackMessage.trim().size() > 0
+        && request.resource.data.sentBackMessage.size() <= 1000
+        && request.resource.data.sentBackAt == request.time;
     }
 
     // Exactly one comment appended, signed by the current user, history untouched
@@ -90,7 +101,7 @@ service cloud.firestore {
       allow update: if (isAdmin()
           && !changedKeys().hasAny(['requestedBy', 'requestedById', 'creationDate']))
         || (isDevinci() && isOwner()
-          && (isPublish() || isCancel() || isItemsEdit() || isComment()));
+          && (isPublish() || isCancel() || isItemsEdit() || isSendBack() || isComment()));
 
       allow delete: if false;
     }

@@ -17,6 +17,7 @@ import {
     getDoc,
     getDocs,
     query,
+    serverTimestamp,
     setDoc,
     updateDoc,
     where,
@@ -189,6 +190,27 @@ describe('orders: owner updates', () => {
         await assertSucceeds(updateDoc(doc(db(STUDENT), 'orders/o1'), edit))
         await seed('orders/o2', order(STUDENT, { status: 'ordered' }))
         await assertFails(updateDoc(doc(db(STUDENT), 'orders/o2'), edit))
+    })
+
+    test('edit items and cancel when changes are requested', async () => {
+        await seed('orders/o2', order(STUDENT, { status: 'changesRequested' }))
+        const items = [{ type: 'item', name: 'Sheet', link: 'https://rs-online.com/b', quantity: '2', price: '3' }]
+        await assertSucceeds(updateDoc(doc(db(STUDENT), 'orders/o2'), { items, lastItemsUpdatedBy: STUDENT.email, ignoreItemsModification: false }))
+        await assertSucceeds(updateDoc(doc(db(STUDENT), 'orders/o2'), { status: 'cancelled', cancelledBy: STUDENT.email }))
+    })
+
+    test('send back for review with a reply, only from changes requested', async () => {
+        await seed('orders/o2', order(STUDENT, { status: 'changesRequested' }))
+        const sendBack = (message) => ({ status: 'pendingIR', sentBackMessage: message, sentBackAt: serverTimestamp() })
+        await assertFails(updateDoc(doc(db(STUDENT), 'orders/o2'), sendBack('   ')))
+        await assertFails(updateDoc(doc(db(STUDENT), 'orders/o2'), { status: 'processingOrder', sentBackMessage: 'Done', sentBackAt: serverTimestamp() }))
+        await assertFails(updateDoc(doc(db(OTHER), 'orders/o2'), sendBack('Done')))
+        await assertSucceeds(updateDoc(doc(db(STUDENT), 'orders/o2'), sendBack('Swapped the servo for the one in the catalogue.')))
+        await assertFails(updateDoc(doc(db(STUDENT), 'orders/o1'), sendBack('Done')))
+    })
+
+    test('cannot request changes on own order', async () => {
+        await assertFails(updateDoc(doc(db(STUDENT), 'orders/o1'), { status: 'changesRequested' }))
     })
 
     test('add a comment', async () => {

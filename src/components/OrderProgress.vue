@@ -12,6 +12,7 @@ const STEPS = ['Submitted', 'Approved', 'Ordered', 'Delivered', 'Picked up']
 const REACHED = {
     draft: -1,
     pendingIR: 0,
+    changesRequested: 0,
     approvedIR: 1,
     processingOrder: 1,
     ordered: 2,
