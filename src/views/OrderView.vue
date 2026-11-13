@@ -902,11 +902,6 @@ export default {
                     <span class="material-symbols-outlined" aria-hidden="true">content_paste</span>
                 </button>
             </div>
-            <div v-if="editingItems" class="items-save">
-                <button type="button" class="primary" @click="toggleEditItems()">
-                    <span class="material-symbols-outlined" aria-hidden="true">check</span>Save items
-                </button>
-            </div>
         </div>
 
 
@@ -1418,7 +1413,7 @@ export default {
     gap: var(--space-2);
 }
 
-.order-actions button, .section-header button, .items-save button {
+.order-actions button, .section-header button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1426,8 +1421,7 @@ export default {
 }
 
 .order-actions button .material-symbols-outlined,
-.section-header button .material-symbols-outlined,
-.items-save button .material-symbols-outlined {
+.section-header button .material-symbols-outlined {
     font-size: 1.25rem;
 }
 
@@ -1479,12 +1473,6 @@ button.quiet-danger {
     justify-content: space-between;
     gap: var(--space-3);
     flex-wrap: wrap;
-}
-
-.items-save {
-    display: flex;
-    justify-content: flex-end;
-    padding-top: var(--space-3);
 }
 
 @media (max-width: 47.99rem) {
