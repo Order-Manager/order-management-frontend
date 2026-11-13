@@ -442,7 +442,7 @@ export default {
         },
         canEdit() {
             return (
-                this.isAuthor() && ["pendingIR", "changesRequested"].includes(this.order.status)
+                this.isAuthor() && ["draft", "pendingIR", "changesRequested"].includes(this.order.status)
                 || this.isReviewer()
             );
         },
