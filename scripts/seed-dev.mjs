@@ -3,6 +3,7 @@
 //
 //   node scripts/seed-dev.mjs                    suppliers + tags
 //   node scripts/seed-dev.mjs you@devinci.fr     ... and make these users admins (sign in on dev first)
+//   node scripts/seed-dev.mjs --personas         ... and the test accounts of the dev account switcher
 
 import { execSync } from 'node:child_process'
 
@@ -56,6 +57,30 @@ async function uidForEmail(email) {
 
 for (const { id, ...supplier } of suppliers) await setDoc(`suppliers/${id}`, { ...supplier, hidden: false })
 for (const { id, ...tag } of tags) await setDoc(`tags/${id}`, { ...tag, hidden: false })
-for (const email of process.argv.slice(2)) {
+// Test accounts for the account switcher (functions/main.py switchAccount; same uids there). Nobody signs in
+// to them with an email link: the function hands out sign-in tokens to the people in ACCOUNT_SWITCHERS.
+const personas = [
+    { uid: 'persona-student', email: 'test.student@edu.devinci.fr' },
+    { uid: 'persona-referent', email: 'test.referent@devinci.fr', admin: { isIR: true, isReferent: true } },
+    { uid: 'persona-admin', email: 'test.admin@devinci.fr', admin: { isIR: true } },
+]
+
+async function createPersona({ uid, email }) {
+    const accounts = `https://identitytoolkit.googleapis.com/v1/projects/${PROJECT}/accounts`
+    const res = await fetch(accounts, { method: 'POST', headers, body: JSON.stringify({ localId: uid, email, emailVerified: true }) })
+    if (res.ok) return console.log(`created ${email}`)
+    const text = await res.text()
+    if (!text.includes('DUPLICATE_LOCAL_ID')) throw new Error(`${email}: ${res.status} ${text}`)
+    console.log(`exists ${email}`)
+}
+
+const args = process.argv.slice(2)
+if (args.includes('--personas')) {
+    for (const persona of personas) {
+        await createPersona(persona)
+        if (persona.admin) await setDoc(`admins/${persona.uid}`, { email: persona.email, ...persona.admin })
+    }
+}
+for (const email of args.filter(a => !a.startsWith('--'))) {
     await setDoc(`admins/${await uidForEmail(email)}`, { email, isIR: true })
 }

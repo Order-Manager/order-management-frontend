@@ -330,3 +330,44 @@ def sendEmail(to: str, subject: str, message: str) -> None:
         })
     except Exception as e:
         print(f"Failed to send email: {e}")
+
+
+# Dev only: lets the people in ACCOUNT_SWITCHERS sign in as test accounts and back, without email links.
+# Only defined where functions/.env.<project> sets ACCOUNT_SWITCHERS, so it never exists on prod.
+ACCOUNT_SWITCHERS = {e.strip().lower() for e in os.environ.get("ACCOUNT_SWITCHERS", "").split(",") if e.strip()}
+
+# Test accounts, created by `node scripts/seed-dev.mjs --personas`
+PERSONAS = {
+    "student": "persona-student",
+    "referent": "persona-referent",
+    "admin": "persona-admin",
+}
+
+if ACCOUNT_SWITCHERS:
+    from firebase_admin import auth as admin_auth
+
+    @https_fn.on_call(region=REGION)
+    def switchAccount(req: https_fn.CallableRequest) -> dict:
+        if req.auth is None:
+            raise https_fn.HttpsError(https_fn.FunctionsErrorCode.UNAUTHENTICATED, "Sign in first.")
+        claims = req.auth.token
+        email = str(claims.get("email", "")).lower()
+        if email in ACCOUNT_SWITCHERS and claims.get("email_verified") is True:
+            # Signed in as themselves: remember who to switch back to
+            home = req.auth.uid
+        elif isinstance(claims.get("switcherHome"), str) and req.auth.uid in [*PERSONAS.values(), claims["switcherHome"]]:
+            # Already switched by this function: the claim can only come from a token it minted
+            home = claims["switcherHome"]
+        else:
+            raise https_fn.HttpsError(https_fn.FunctionsErrorCode.PERMISSION_DENIED, "Not allowed to switch accounts.")
+
+        account = (req.data or {}).get("account")
+        if account == "home":
+            uid = home
+        elif account in PERSONAS:
+            uid = PERSONAS[account]
+        else:
+            raise https_fn.HttpsError(https_fn.FunctionsErrorCode.INVALID_ARGUMENT, "Unknown account.")
+
+        token = admin_auth.create_custom_token(uid, {"switcherHome": home})
+        return {"token": token.decode() if isinstance(token, bytes) else token}
