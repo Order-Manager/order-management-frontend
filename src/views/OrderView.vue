@@ -346,6 +346,41 @@ export default {
             })
             // console.log(orderRef)
         },
+        // The stage's own actions (shown as buttons) and the occasional ones (in the More menu)
+        hasMainActions() {
+            const status = this.order.status
+            return (this.isAuthor() && ['draft', 'pendingIR', 'changesRequested'].includes(status))
+                || (this.isReviewer() && ['pending', 'refused', 'pendingIR', 'refusedIR', 'processingOrder', 'ordered', 'received', 'changesRequested'].includes(status))
+        },
+        hasMoreActions() {
+            return this.isReviewer()
+        },
+        canAskAnotherReferent() {
+            return this.isReviewer() && ['pendingIR', 'refusedIR'].includes(this.order.status)
+        },
+        closeMore(returnFocus) {
+            this.moreOpen = false
+            if (returnFocus) this.$nextTick(() => this.$refs.moreButton?.focus())
+        },
+        // Close the menu when the keyboard moves focus out of it (Safari doesn't focus buttons on click, hence the relatedTarget check)
+        onMoreFocusOut(event) {
+            if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget)) this.moreOpen = false
+        },
+        // ...and on a click or tap anywhere else
+        onOutsidePointer(event) {
+            if (!event.target.closest('.more-actions')) this.moreOpen = false
+        },
+        openReviewRequestDialog() {
+            this.closeMore(false)
+            this.selectedReviewer = ""
+            this.$refs.reviewRequestDialog.showModal()
+            this.$nextTick(() => this.$refs.reviewerSelect.focus())
+        },
+        sendReviewRequest() {
+            if (!this.selectedReviewer) return
+            this.requestReview()
+            this.$refs.reviewRequestDialog.close()
+        },
         requestReview() {
             const db = useFirestore()
             const orderRef = doc(db, 'orders', this.order_id)
@@ -592,12 +627,18 @@ export default {
         order_id: String,
     },
     watch: {
+        moreOpen(open) {
+            document[open ? 'addEventListener' : 'removeEventListener']('pointerdown', this.onOutsidePointer)
+        },
         "order.title": {
             handler(title) {
                 if (this.order) document.title = `${title || 'Untitled order'} · IFT Orders`;
             },
             immediate: true,
         },
+    },
+    beforeUnmount() {
+        document.removeEventListener('pointerdown', this.onOutsidePointer)
     },
     data() {
         return {
@@ -615,6 +656,7 @@ export default {
             rejectItemReason: "",
             rejectItemError: "",
             busy: false,
+            moreOpen: false, // Reviewers' "More" menu
         };
     },
     setup() {
@@ -680,6 +722,55 @@ export default {
                 <span class="material-symbols-outlined" aria-hidden="true">inventory_2</span>
                 <span>{{ order.archivedAt ? 'Archived ' : 'Archived' }}<RelativeTime v-if="order.archivedAt" :value="order.archivedAt" />. It only appears under Archived in the order list.</span>
             </p>
+            <!-- What can be done next: the stage's main action first, then the occasional ones, then More -->
+            <div v-if="hasMainActions() || hasMoreActions()" class="order-actions" role="group" aria-label="Order actions">
+                <div class="order-actions-main">
+                    <button v-if="isAuthor() && order.status === 'draft'" type="button" class="primary" :disabled="busy" @click="publishOrder()">
+                        <span class="material-symbols-outlined" aria-hidden="true">send</span>Submit order
+                    </button>
+                    <button v-if="isAuthor() && order.status === 'changesRequested'" type="button" class="primary" :disabled="busy" @click="openSendBackDialog()">
+                        <span class="material-symbols-outlined" aria-hidden="true">reply</span>Send back for review
+                    </button>
+                    <button v-if="isReviewer() && ['pending', 'refused', 'pendingIR', 'refusedIR'].includes(order.status)" type="button" class="primary" :disabled="busy" @click="approvedByIR(false)">
+                        <span class="material-symbols-outlined" aria-hidden="true">check</span>Approve order
+                    </button>
+                    <button v-if="isReviewer() && order.status === 'processingOrder'" type="button" class="primary" :disabled="busy" @click="setOrderStatus('ordered')">
+                        <span class="material-symbols-outlined" aria-hidden="true">shopping_cart_checkout</span>Mark as ordered
+                    </button>
+                    <button v-if="isReviewer() && order.status === 'ordered'" type="button" class="primary" :disabled="busy" @click="setOrderStatus('received')">
+                        <span class="material-symbols-outlined" aria-hidden="true">inventory</span>Mark as delivered
+                    </button>
+                    <button v-if="isReviewer() && order.status === 'received'" type="button" class="primary" :disabled="busy" @click="setOrderStatus('completed')">
+                        <span class="material-symbols-outlined" aria-hidden="true">task_alt</span>Mark as completed
+                    </button>
+                    <button v-if="isReviewer() && ['pendingIR', 'processingOrder'].includes(order.status)" type="button" :disabled="busy" @click="openChangesDialog()">
+                        <span class="material-symbols-outlined" aria-hidden="true">rate_review</span>Request changes
+                    </button>
+                    <button v-if="isReviewer() && ['pendingIR', 'processingOrder', 'changesRequested'].includes(order.status)" type="button" class="danger" :disabled="busy" @click="openRejectDialog()">
+                        <span class="material-symbols-outlined" aria-hidden="true">block</span>Reject order
+                    </button>
+                    <button v-if="isAuthor() && ['draft', 'pendingIR', 'changesRequested'].includes(order.status)" type="button" class="quiet-danger" :disabled="busy" @click="$refs.cancelDialog.showModal()">
+                        Cancel order
+                    </button>
+                </div>
+                <div v-if="hasMoreActions()" class="more-actions" @focusout="onMoreFocusOut">
+                    <button type="button" ref="moreButton" aria-controls="more-actions-list" :aria-expanded="moreOpen" @click="moreOpen = !moreOpen">
+                        <span class="material-symbols-outlined" aria-hidden="true">more_horiz</span>More
+                    </button>
+                    <ul v-show="moreOpen" id="more-actions-list" class="more-actions-list" @keydown.esc.stop="closeMore(true)">
+                        <li v-if="canAskAnotherReferent()">
+                            <button type="button" @click="openReviewRequestDialog()">
+                                <span class="material-symbols-outlined" aria-hidden="true">person_add</span>Ask another referent…
+                            </button>
+                        </li>
+                        <li>
+                            <button type="button" :disabled="busy" @click="closeMore(true); setArchived(!order.archived)">
+                                <span class="material-symbols-outlined" aria-hidden="true">{{ order.archived ? 'unarchive' : 'inventory_2' }}</span>{{ order.archived ? 'Unarchive' : 'Archive' }}
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+            </div>
             <dl class="summary-facts">
                 <div>
                     <dt>Referent</dt>
@@ -708,10 +799,15 @@ export default {
             </dl>
         </section>
 
-        <h2 class="section-title">
-            <span class="material-symbols-outlined" aria-hidden="true">shopping_cart</span>
-            Items <span class="group-count">{{ order.items.length }}</span>
-        </h2>
+        <div class="section-header">
+            <h2 class="section-title">
+                <span class="material-symbols-outlined" aria-hidden="true">shopping_cart</span>
+                Items <span class="group-count">{{ order.items.length }}</span>
+            </h2>
+            <button type="button" v-if="canEdit()" :class="{ primary: editingItems }" @click="toggleEditItems()">
+                <span class="material-symbols-outlined" aria-hidden="true">{{ editingItems ? 'check' : 'edit' }}</span>{{ editingItems ? "Save items" : "Edit items" }}
+            </button>
+        </div>
 
         <div id="items-list" class="table-scroll">
             <table class="data-table orderview-table">
@@ -806,87 +902,13 @@ export default {
                     <span class="material-symbols-outlined" aria-hidden="true">content_paste</span>
                 </button>
             </div>
-        </div>
-
-        <div id="approval-buttons">
-            <button type="button" v-if="canEdit()" @click="toggleEditItems()">
-                {{ editingItems ? "Save items" : "Edit items" }}
-            </button>
-
-            <button type="button" class="primary"
-                v-if="isAuthor() && ['draft'].includes(order.status)"
-                v-on:click="publishOrder()">
-                Submit order
-            </button>
-
-            <button type="button" class="primary"
-                v-if="isReviewer() && ['pending', 'refused', 'pendingIR', 'refusedIR'].includes(order.status)"
-                v-on:click="approvedByIR(false)">
-                Approve order
-            </button>
-
-            <div v-if="isReviewer() && ['pendingIR', 'refusedIR'].includes(order.status)" class="center-row small-gap">
-                <label for="reviewer-select" class="visually-hidden">Reviewer</label>
-                <select id="reviewer-select" v-model="selectedReviewer">
-                    <option value="" disabled>Choose a reviewer</option>
-                    <option v-for="reviewer in reviewers.filter(reviewer =>  isReviewRequestAllowed(reviewer.email))" :key="reviewer.id" :value="reviewer.email">{{ reviewer.email }}</option>
-                </select>
-                <button type="button"
-                    v-on:click="requestReview()">
-                    Send review request
+            <div v-if="editingItems" class="items-save">
+                <button type="button" class="primary" @click="toggleEditItems()">
+                    <span class="material-symbols-outlined" aria-hidden="true">check</span>Save items
                 </button>
             </div>
-
-            <button type="button" class="primary"
-                v-if="isReviewer() && ['processingOrder'].includes(order.status)"
-                v-on:click="setOrderStatus('ordered')">
-                Mark as ordered
-            </button>
-
-            <button type="button" class="primary"
-                v-if="isReviewer() && ['ordered'].includes(order.status)"
-                v-on:click="setOrderStatus('received')">
-                Mark as delivered
-            </button>
-
-            <button type="button" class="primary"
-                v-if="isReviewer() && ['received'].includes(order.status)"
-                v-on:click="setOrderStatus('completed')">
-                Mark as completed
-            </button>
-
-            <button type="button" class="primary"
-                v-if="isAuthor() && order.status === 'changesRequested'"
-                :disabled="busy" @click="openSendBackDialog()">
-                Send back for review
-            </button>
-
-            <button type="button"
-                v-if="isReviewer() && ['pendingIR', 'processingOrder'].includes(order.status)"
-                @click="openChangesDialog()">
-                Request changes
-            </button>
-
-            <button type="button" class="danger"
-                v-if="isReviewer() && ['pendingIR', 'processingOrder', 'changesRequested'].includes(order.status)"
-                v-on:click="openRejectDialog()">
-                Reject order
-            </button>
-
-            <button type="button" v-if="isReviewer() && !order.archived" :disabled="busy" @click="setArchived(true)">
-                Archive
-            </button>
-            <button type="button" v-if="isReviewer() && order.archived" :disabled="busy" @click="setArchived(false)">
-                Unarchive
-            </button>
-
-            <button type="button" class="danger"
-                v-if="isAuthor() && ['draft', 'pendingIR', 'changesRequested'].includes(order.status)"
-                v-on:click="$refs.cancelDialog.showModal()">
-                Cancel order
-            </button>
-
         </div>
+
 
 
         <InvoicesPanel
@@ -951,6 +973,22 @@ export default {
                 </button>
             </div>
         </form>
+
+        <dialog ref="reviewRequestDialog" class="dialog" aria-labelledby="review-request-title">
+            <form @submit.prevent="sendReviewRequest()" novalidate>
+                <h2 id="review-request-title">Ask another referent</h2>
+                <p>They get an email asking them to review this order. You can ask the same person again after two days.</p>
+                <label for="reviewer-select">Referent</label>
+                <select id="reviewer-select" ref="reviewerSelect" v-model="selectedReviewer" required>
+                    <option value="" disabled>Choose a referent</option>
+                    <option v-for="reviewer in reviewers.filter(reviewer => reviewer.email !== currentUser.email && isReviewRequestAllowed(reviewer.email))" :key="reviewer.id" :value="reviewer.email">{{ displayName(reviewer.email) }} ({{ reviewer.email }})</option>
+                </select>
+                <div class="dialog-actions">
+                    <button type="button" @click="$refs.reviewRequestDialog.close()">Cancel</button>
+                    <button type="submit" class="primary" :disabled="!selectedReviewer">Send request</button>
+                </div>
+            </form>
+        </dialog>
 
         <dialog ref="rejectDialog" class="dialog" aria-labelledby="reject-title">
             <form @submit.prevent="confirmReject()" novalidate>
@@ -1365,26 +1403,117 @@ export default {
     align-items: center;
 }
 
-#approval-buttons {
+/* Actions in the summary card: main action first, occasional ones after, More at the far right */
+.order-actions {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-3) var(--space-5);
+    flex-wrap: wrap;
+}
+
+.order-actions-main {
     display: flex;
     flex-wrap: wrap;
-    width: 100%;
-    gap: 0.75rem 1rem;
-    padding-top: 2rem;
+    gap: var(--space-2);
 }
 
-#approval-buttons > .center-row {
-    flex-wrap: wrap;
+.order-actions button, .section-header button, .items-save button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
 }
 
-@media (max-width: 47.99rem) {
-    #approval-buttons > button,
-    #approval-buttons > .center-row,
-    #approval-buttons > .center-row > * {
-        flex: 1 1 100%;
+.order-actions button .material-symbols-outlined,
+.section-header button .material-symbols-outlined,
+.items-save button .material-symbols-outlined {
+    font-size: 1.25rem;
+}
+
+/* Cancelling is rare and undoable only by asking again: present but quiet */
+button.quiet-danger {
+    border-color: transparent;
+    background: none;
+    color: var(--red);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    button.quiet-danger:hover:not(:disabled) {
+        border-color: var(--red);
     }
 }
 
+.more-actions {
+    position: relative;
+    margin-left: auto;
+}
+
+.more-actions-list {
+    position: absolute;
+    right: 0;
+    top: calc(100% + var(--space-1));
+    z-index: 20;
+    min-width: 14rem;
+    margin: 0;
+    padding: var(--space-1);
+    list-style: none;
+    border: 1px solid var(--border-muted);
+    border-radius: var(--radius);
+    background-color: var(--bg-light);
+    box-shadow: 0 6px 20px rgb(0 0 0 / 0.25);
+}
+
+.more-actions-list button {
+    width: 100%;
+    white-space: nowrap;
+    justify-content: flex-start;
+    border-color: transparent;
+    background: none;
+    text-align: left;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+}
+
+.items-save {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: var(--space-3);
+}
+
+@media (max-width: 47.99rem) {
+    /* Phones: the main action gets its own full-width line, the others share the next ones */
+    .order-actions, .order-actions-main {
+        width: 100%;
+    }
+
+    .order-actions-main > button {
+        flex: 1 1 auto;
+    }
+
+    .order-actions-main > button.primary {
+        flex-basis: 100%;
+    }
+
+    .more-actions {
+        width: 100%;
+    }
+
+    .more-actions > button {
+        width: 100%;
+    }
+
+    .more-actions-list {
+        left: 0;
+        right: 0;
+    }
+}
 
 #updates {
     padding: 0;
