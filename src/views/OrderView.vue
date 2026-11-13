@@ -296,7 +296,7 @@ export default {
         },
         canEdit() {
             return (
-                this.isAuthor() && this.order.status === "pendingIR"
+                this.isAuthor() && ["draft", "pendingIR"].includes(this.order.status)
                 || this.isReviewer()
             );
         },

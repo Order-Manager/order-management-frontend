@@ -183,10 +183,11 @@ describe('orders: owner updates', () => {
         await assertFails(updateDoc(doc(db(STUDENT), 'orders/o2'), { status: 'cancelled', cancelledBy: STUDENT.email }))
     })
 
-    test('edit items only while pending review', async () => {
+    test('edit items only on a draft or while pending review', async () => {
         const items = [{ type: 'item', name: 'Sheet', link: 'https://rs-online.com/b', quantity: '2', price: '3' }]
         const edit = { items, lastItemsUpdatedBy: STUDENT.email, ignoreItemsModification: false }
         await assertSucceeds(updateDoc(doc(db(STUDENT), 'orders/o1'), edit))
+        await assertSucceeds(updateDoc(doc(db(STUDENT), 'orders/draft'), edit))
         await seed('orders/o2', order(STUDENT, { status: 'ordered' }))
         await assertFails(updateDoc(doc(db(STUDENT), 'orders/o2'), edit))
     })

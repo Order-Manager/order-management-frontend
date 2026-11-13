@@ -46,10 +46,10 @@ service cloud.firestore {
         && request.resource.data.cancelledBy == request.auth.token.email;
     }
 
-    // Owners can edit items while the order waits for review
+    // Owners can edit items on a draft, or while the order waits for review
     function isItemsEdit() {
       return changedKeys().hasOnly(['items', 'lastItemsUpdatedBy', 'ignoreItemsModification'])
-        && resource.data.status == 'pendingIR'
+        && resource.data.status in ['draft', 'pendingIR']
         && request.resource.data.items is list
         && request.resource.data.lastItemsUpdatedBy == request.auth.token.email;
     }
