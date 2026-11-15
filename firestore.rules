@@ -23,6 +23,15 @@ service cloud.firestore {
         && get(path).data.email == data.referent;
     }
 
+    // What the order is for: a category and its value (a project name, a stock, an association)
+    function isCategory(data) {
+      return data.category in ['project', 'stock', 'asso']
+        && data.categoryValue is string
+        && data.categoryValue.trim().size() > 0
+        && data.categoryValue.size() <= 100
+        && (!('categoryId' in data) || data.categoryId is string);
+    }
+
     function changedKeys() {
       return request.resource.data.diff(resource.data).affectedKeys();
     }
@@ -92,6 +101,7 @@ service cloud.firestore {
         && request.resource.data.requestedById == request.auth.uid
         && request.resource.data.status in ['draft', 'pendingIR']
         && request.resource.data.updates == []
+        && isCategory(request.resource.data)
         // An order created archived would never reach the reviewers
         && request.resource.data.get('archived', false) == false
         // Invoices are attached by staff through the orders-files service

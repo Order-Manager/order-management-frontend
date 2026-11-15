@@ -26,6 +26,15 @@ const REFERENT = { uid: 'persona-referent', email: 'test.referent@devinci.fr' }
 const ADMIN = { uid: 'persona-admin', email: 'test.admin@devinci.fr' }
 const THOMAS = { uid: '7T42Y35O1qZbrEi3DiC85cRIt772', email: 'thomas.juldo@devinci.fr' }
 
+// Category choices from seed-dev.mjs: an order's first tag gives its category
+const CHOICES = {
+    'project-demo': { name: 'Demo project', type: 'project' },
+    'project-test': { name: 'Test project', type: 'project' },
+    'stock-electronics': { name: 'Electronics', type: 'stock' },
+    'stock-creakits': { name: 'CreaKits', type: 'stock' },
+    'asso-demo': { name: 'Demo association', type: 'asso' },
+}
+
 // Catalogue parts, so stock badges show on the order page
 const parts = JSON.parse(readFileSync(new URL('./catalog-parts.json', import.meta.url)))
 const part = (name, quantity, state = {}) => {
@@ -134,7 +143,7 @@ const orders = [
     // The test referent's own orders (stock and kits), reviewed by you
     {
         id: 'fake-referent-creakit', owner: REFERENT, referent: THOMAS, status: 'pendingIR', title: 'CreaKit restock for next semester',
-        supplier: 'Amazon FR', tags: ['stock-electronics'], priority: 'medium', created: 0,
+        supplier: 'Amazon FR', tags: ['stock-creakits'], priority: 'medium', created: 0,
         items: [part('Storage box 1.4 L', 2), part('Foam pad 40x30x1 cm', 2), part('Potentiometer 10 kΩ', 2), part('Push button 6x6x5 mm', 1), part('Breadboards and Dupont wires', 3)],
         updates: [created(0), comment(0, REFERENT.email, 'Enough for 20 more CreaKits before the January workshops.')],
     },
@@ -190,7 +199,8 @@ for (const o of orders) {
         creationDate: daysAgo(o.created, 9), lastUpdate: o.updates.at(-1).date,
         requestedBy: o.owner.email, requestedById: o.owner.uid, referent: o.referent.email, referentId: o.referent.uid,
         status: o.status, title: o.title, supplier: o.supplier, items: o.items, comment: '', updates: [],
-        tags: o.tags, priority: o.priority, archived: false,
+        category: CHOICES[o.tags[0]].type, categoryValue: CHOICES[o.tags[0]].name, categoryId: o.tags[0],
+        priority: o.priority, archived: false,
         cancelledBy: o.cancelledBy, changesRequestedBy: o.changesRequestedBy, changesRequestedAt: o.changesRequestedAt,
         changesRequestedMessage: o.changesRequestedMessage,
     })

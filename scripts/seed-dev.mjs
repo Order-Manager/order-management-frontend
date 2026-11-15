@@ -24,11 +24,15 @@ const suppliers = [
     { id: 'digikey', name: 'Digikey', webpage: 'https://www.digikey.fr/' },
 ]
 
+// The choices of each order category (Categories page). The Fablab is an association.
 const tags = [
     { id: 'project-demo', name: 'Demo project', type: 'project' },
     { id: 'project-test', name: 'Test project', type: 'project' },
     { id: 'stock-electronics', name: 'Electronics', type: 'stock' },
+    { id: 'stock-creakits', name: 'CreaKits', type: 'stock' },
+    { id: 'stock-tools', name: 'Tools and equipment', type: 'stock' },
     { id: 'asso-demo', name: 'Demo association', type: 'asso' },
+    { id: 'asso-fablab', name: 'Fablab', type: 'asso' },
 ]
 
 function toFields(data) {

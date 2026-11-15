@@ -137,6 +137,25 @@ export const tagsTypes = [
     "asso"
 ]
 
+// What an order is for. The choices of each category are the tags of that type (Categories page);
+// only projects can be typed in when they aren't in the list yet.
+export const ORDER_CATEGORIES = {
+    project: { label: "Project", field: "Project name", icon: "science", hint: "A student or research project.", allowOther: true },
+    stock: { label: "Lab stock", field: "Stock", icon: "inventory_2", hint: "Parts or tools the lab keeps for everyone." },
+    asso: { label: "Association", field: "Association", icon: "groups", hint: "A student association, such as the Fablab or the BDE." },
+}
+
+// "Project · Robot arm"; older orders only have tags, shown by name
+export function orderCategoryText(order, tags = []) {
+    const category = ORDER_CATEGORIES[order.category]
+    if (category) {
+        const tag = order.categoryId && tags.find(t => t.id === order.categoryId)
+        return `${category.label} · ${tag ? tag.name : order.categoryValue}`
+    }
+    const names = (order.tags || []).map(id => tags.find(t => t.id === id)?.name).filter(Boolean)
+    return names.join(", ") || "None"
+}
+
 export const priorityToColor = {
     "low": "green",
     "medium": "orange",

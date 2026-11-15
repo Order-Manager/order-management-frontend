@@ -49,7 +49,7 @@ export default {
             { to: '/parts', label: 'Parts' },
             ...(userData.value && userData.value.isIR ? [
                 { to: '/suppliers', label: 'Suppliers' },
-                { to: '/tags', label: 'Tags' },
+                { to: '/categories', label: 'Categories' },
             ] : []),
         ]);
 

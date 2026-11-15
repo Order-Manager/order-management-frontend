@@ -60,9 +60,13 @@ const routes = [{
         meta: { title: "Suppliers" }
     },
     {
-        path: "/tags",
+        path: "/categories",
         component: TagsManagement,
-        meta: { title: "Tags" }
+        meta: { title: "Categories" }
+    },
+    {
+        path: "/tags",
+        redirect: "/categories"
     },
     {
         path: "/parts",

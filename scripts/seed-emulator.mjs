@@ -3,8 +3,8 @@
 // `node scripts/seed-emulator.mjs link <email>` after you request it in the app.
 
 const PROJECT = 'demo-orders'
-const FIRESTORE = `http://127.0.0.1:8080/v1/projects/${PROJECT}/databases/(default)/documents`
-const AUTH = `http://127.0.0.1:9099`
+const FIRESTORE = `http://${process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8080'}/v1/projects/${PROJECT}/databases/(default)/documents`
+const AUTH = `http://${process.env.FIREBASE_AUTH_EMULATOR_HOST || '127.0.0.1:9099'}`
 const headers = { Authorization: 'Bearer owner', 'Content-Type': 'application/json' }
 
 const ADMIN = { uid: 'admin', email: 'admin@devinci.fr' }
@@ -68,11 +68,13 @@ const suppliers = [
 ]
 for (const [id, name, webpage] of suppliers) await setDoc(`suppliers/${id}`, { name, webpage, hidden: false })
 
+// The choices of each order category (Categories page). The Fablab is an association.
 const tags = [
     ['octon', 'Octon', 'project'], ['marblebot', 'MarbleBot', 'project'], ['compass', 'Compass', 'project'],
-    ['fablab', 'Fablab consumables', 'stock'], ['electronics', 'Electronics', 'stock'],
-    ['bde', 'BDE', 'asso'], ['robotics-club', 'Robotics club', 'asso'],
+    ['electronics', 'Electronics', 'stock'], ['creakits', 'CreaKits', 'stock'], ['tools', 'Tools and equipment', 'stock'],
+    ['fablab', 'Fablab', 'asso'], ['bde', 'BDE', 'asso'], ['robotics-club', 'Robotics club', 'asso'],
 ]
+const tagById = Object.fromEntries(tags.map(([id, name, type]) => [id, { id, name, type }]))
 for (const [id, name, type] of tags) await setDoc(`tags/${id}`, { name, type, hidden: false })
 
 const item = (name, link, quantity, price, state = {}) => ({ type: 'item', name, link, quantity: String(quantity), price: String(price), ...state })
@@ -159,7 +161,9 @@ for (const o of orders) {
     await setDoc(`orders/${o.id}`, {
         creationDate: daysAgo(o.created), lastUpdate: total, requestedBy: o.owner.email, requestedById: o.owner.uid,
         status: o.status, title: o.title, supplier: o.supplier, items: o.items, comment: '', updates: o.updates,
-        tags: o.tags, priority: o.priority, archived: false, ...(o.cancelledBy ? { cancelledBy: o.cancelledBy } : {}),
+        // An order is for one thing: its first tag gives the category
+        category: tagById[o.tags[0]].type, categoryValue: tagById[o.tags[0]].name, categoryId: o.tags[0],
+        priority: o.priority, archived: false, ...(o.cancelledBy ? { cancelledBy: o.cancelledBy } : {}),
     })
 }
 

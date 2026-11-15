@@ -7,7 +7,7 @@ import { doc, updateDoc, collection, arrayUnion, Timestamp, serverTimestamp } fr
 
 import { useRoute } from 'vue-router'
 
-import { updateTypesToMessage, statusTypesToMessage, statusTypesToColor, updateTypesToColor, updateTypesToIcon, priorityToColor, MIN_JUSTIFICATION, JUSTIFICATION_PLACEHOLDER } from '../utils/definitions.js'
+import { updateTypesToMessage, statusTypesToMessage, statusTypesToColor, updateTypesToColor, updateTypesToIcon, priorityToColor, MIN_JUSTIFICATION, JUSTIFICATION_PLACEHOLDER, orderCategoryText } from '../utils/definitions.js'
 
 import { useToast } from "vue-toastification";
 
@@ -465,10 +465,7 @@ export default {
         showInfo(message) {
             this.toast.info(message);
         },
-        tagName(id) {
-            const tag = this.tags.find(t => t.id === id);
-            return tag ? tag.name : id;
-        },
+        orderCategoryText,
         isReviewer() {
             return this.userData && this.userData.isIR;
         },
@@ -789,8 +786,8 @@ export default {
                     <dd :class="priorityToColor[order.priority] ? priorityToColor[order.priority] : 'green'">{{ order.priority ? order.priority.charAt(0).toUpperCase()+ order.priority.slice(1) : "Low" }}</dd>
                 </div>
                 <div>
-                    <dt>Tags</dt>
-                    <dd>{{ (order.tags || []).map(tagName).join(", ") || "None" }}</dd>
+                    <dt>{{ order.category ? 'For' : 'Tags' }}</dt>
+                    <dd>{{ orderCategoryText(order, tags) }}</dd>
                 </div>
                 <div>
                     <dt>Last update</dt>

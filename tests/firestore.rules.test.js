@@ -52,7 +52,9 @@ function order(owner, overrides = {}) {
         items: [{ type: 'item', name: 'Sheet', link: 'https://rs-online.com/a', quantity: '1', price: '3' }],
         comment: '',
         updates: [{ type: 'order-creation', date: Timestamp.now(), author: 'system' }],
-        tags: ['t1'],
+        category: 'project',
+        categoryValue: 'Robot arm',
+        categoryId: 't1',
         priority: 'low',
         referent: ADMIN.email,
         referentId: ADMIN.uid,
@@ -161,6 +163,19 @@ describe('orders: creating', () => {
         // A referent id with someone else's email
         await assertFails(addDoc(collection(db(STUDENT), 'orders'), order(STUDENT, { updates: [], referent: 'fake@devinci.fr' })))
         await assertFails(addDoc(collection(db(STUDENT), 'orders'), order(STUDENT, { updates: [], referentId: 'nobody' })))
+    })
+
+    test('needs a category and its value', async () => {
+        const base = order(STUDENT, { updates: [] })
+        const { category, categoryValue, categoryId, ...noCategory } = base
+        await assertFails(addDoc(collection(db(STUDENT), 'orders'), noCategory))
+        await assertFails(addDoc(collection(db(STUDENT), 'orders'), { ...base, category: 'equipment' }))
+        await assertFails(addDoc(collection(db(STUDENT), 'orders'), { ...base, categoryValue: '  ' }))
+        await assertFails(addDoc(collection(db(STUDENT), 'orders'), { ...base, categoryValue: 'x'.repeat(101) }))
+        // A project typed in rather than picked from the list has no id
+        const { categoryId: _, ...typedProject } = base
+        await assertSucceeds(addDoc(collection(db(STUDENT), 'orders'), typedProject))
+        await assertSucceeds(addDoc(collection(db(STUDENT), 'orders'), { ...base, category: 'asso', categoryValue: 'Fablab', categoryId: 'fablab' }))
     })
 
     test('cannot pre-fill the history', async () => {

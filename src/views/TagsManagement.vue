@@ -16,7 +16,7 @@ import {
 
 import { useToast } from "vue-toastification";
 
-import { tagsTypes } from '../utils/definitions'
+import { tagsTypes, ORDER_CATEGORIES } from '../utils/definitions'
 
 
 export default {
@@ -29,25 +29,27 @@ export default {
                 return
             }
 
+            const name = this.newTagName.trim()
+            const type = this.newTagType
             addDoc(collection(db, 'tags'), {
-                name: this.newTagName,
-                type: this.newTagType,
+                name,
+                type,
                 hidden: false
             })
 
             this.newTagName = ''
             this.newTagType = ''
 
-            this.showSuccess('Tag added')
+            this.showSuccess(`Added to ${ORDER_CATEGORIES[type].label}: ${name}`)
         },
         changeHidden(tag) {
             const db = useFirestore()
             const tagRef = doc(db, 'tags', tag.id)
 
             if (tag.hidden) {
-                this.showInfo(`Tag hidden: ${tag.name} (${tag.type})`)
+                this.showInfo(`Hidden: ${tag.name}`)
             } else {
-                this.showInfo(`Tag shown: ${tag.name} (${tag.type})`)
+                this.showInfo(`Shown again: ${tag.name}`)
             }
 
             updateDoc(tagRef, {
@@ -83,7 +85,7 @@ export default {
             tag.type = tag.newType;
             tag.editing = false;
 
-            this.showSuccess(`Tag updated: ${tag.name} (${tag.type})`)
+            this.showSuccess(`Saved: ${tag.name}`)
         },
         cancelEdit(tag) {
             tag.editing = false;
@@ -93,7 +95,7 @@ export default {
             const tagRef = doc(db, 'tags', tag.id)
             deleteDoc(tagRef)
 
-            this.showSuccess(`Tag deleted: ${tag.name} (${tag.type})`)
+            this.showSuccess(`Deleted: ${tag.name}`)
         },
     },
     data() {
@@ -120,7 +122,7 @@ export default {
         const toast = useToast()
 
         return {
-            tags, toast, isAdmin, userData, tagsTypes
+            tags, toast, isAdmin, userData, tagsTypes, ORDER_CATEGORIES
         }
     }
 }
@@ -128,78 +130,85 @@ export default {
 
 <template>
     <div class="center-column">
-        <h1>Tags</h1>
+        <h1>Categories</h1>
     </div>
+    <p class="categories-intro">Every order says what it's for. These are the choices students get for each category; hide one to stop offering it without changing older orders.</p>
 
-    <p v-if="!isAdmin" role="status">{{ userData === undefined ? 'Loading…' : 'Only referents can manage tags.' }}</p>
+    <p v-if="!isAdmin" role="status">{{ userData === undefined ? 'Loading…' : 'Only referents can manage categories.' }}</p>
 
     <template v-else>
-    <div class="table-scroll">
-        <table class="data-table tags-table">
-            <caption class="visually-hidden">Tags</caption>
-            <thead>
-                <tr>
-                    <th scope="col">Name</th>
-                    <th scope="col">Type</th>
-                    <th scope="col">Hidden</th>
-                    <th scope="col"><span class="visually-hidden">Actions</span></th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr v-for="tag in tags" :key="tag.id">
-                    <template v-if="tag.editing">
-                        <td><input type="text" v-model="tag.newName" :aria-label="`Name of ${tag.name}`" /></td>
-                        <td>
-                            <select v-model="tag.newType" :aria-label="`Type of ${tag.name}`">
-                                <option v-for="type in tagsTypes" :key="type" :value="type">{{ type }}</option>
-                            </select>
+    <section v-for="(category, type) in ORDER_CATEGORIES" :key="type" class="category-section" :aria-labelledby="`category-${type}`">
+        <h2 :id="`category-${type}`" class="section-title">
+            <span class="material-symbols-outlined" aria-hidden="true">{{ category.icon }}</span>
+            {{ category.label }}
+            <span class="category-field">· {{ category.field }}<template v-if="category.allowOther">, or typed in by the student</template></span>
+        </h2>
+        <div class="table-scroll">
+            <table class="data-table tags-table">
+                <caption class="visually-hidden">{{ category.label }}: {{ category.field }}</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Name</th>
+                        <th scope="col">Hidden</th>
+                        <th scope="col"><span class="visually-hidden">Actions</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="tag in tags.filter(tag => tag.type === type)" :key="tag.id">
+                        <td v-if="tag.editing">
+                            <div class="tag-edit">
+                                <input type="text" v-model="tag.newName" :aria-label="`Name of ${tag.name}`" />
+                                <select v-model="tag.newType" :aria-label="`Category of ${tag.name}`">
+                                    <option v-for="(other, key) in ORDER_CATEGORIES" :key="key" :value="key">{{ other.label }}</option>
+                                </select>
+                            </div>
                         </td>
-                    </template>
-                    <template v-else>
-                        <td>{{ tag.name }}</td>
-                        <td>{{ tag.type }}</td>
-                    </template>
-                    <td>
-                        <input type="checkbox" v-model="tag.hidden" v-on:change="changeHidden(tag)" :aria-label="`Hide ${tag.name}`" />
-                    </td>
-                    <td>
-                        <div class="center-both" v-if="tag.editing">
-                            <button type="button" class="icon-button" @click="saveTag(tag)" :aria-label="`Save ${tag.name}`" title="Save">
-                                <span class="material-symbols-outlined" aria-hidden="true">save</span>
+                        <td v-else>{{ tag.name }}</td>
+                        <td>
+                            <input type="checkbox" v-model="tag.hidden" v-on:change="changeHidden(tag)" :aria-label="`Hide ${tag.name}`" />
+                        </td>
+                        <td>
+                            <div class="center-both" v-if="tag.editing">
+                                <button type="button" class="icon-button" @click="saveTag(tag)" :aria-label="`Save ${tag.name}`" title="Save">
+                                    <span class="material-symbols-outlined" aria-hidden="true">save</span>
+                                </button>
+                                <button type="button" class="icon-button" @click="cancelEdit(tag)" :aria-label="`Cancel editing ${tag.name}`" title="Cancel">
+                                    <span class="material-symbols-outlined" aria-hidden="true">cancel</span>
+                                </button>
+                                <button type="button" class="icon-button red" @click="deleteTag(tag)" :aria-label="`Delete ${tag.name}`" title="Delete">
+                                    <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+                                </button>
+                            </div>
+                            <button v-else type="button" class="icon-button" @click="editTag(tag)" :aria-label="`Edit ${tag.name}`" title="Edit">
+                                <span class="material-symbols-outlined" aria-hidden="true">edit</span>
                             </button>
-                            <button type="button" class="icon-button" @click="cancelEdit(tag)" :aria-label="`Cancel editing ${tag.name}`" title="Cancel">
-                                <span class="material-symbols-outlined" aria-hidden="true">cancel</span>
-                            </button>
-                            <button type="button" class="icon-button red" @click="deleteTag(tag)" :aria-label="`Delete ${tag.name}`" title="Delete">
-                                <span class="material-symbols-outlined" aria-hidden="true">delete</span>
-                            </button>
-                        </div>
-                        <button v-else type="button" class="icon-button" @click="editTag(tag)" :aria-label="`Edit ${tag.name}`" title="Edit">
-                            <span class="material-symbols-outlined" aria-hidden="true">edit</span>
-                        </button>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
+                        </td>
+                    </tr>
+                    <tr v-if="!tags.some(tag => tag.type === type)">
+                        <td colspan="3" class="empty-category">Nothing yet.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
 
     <form class="add-form" @submit.prevent="addTag()">
-        <h2>Add a tag</h2>
+        <h2>Add a choice</h2>
         <div class="add-fields">
                 <div class="add-field">
-                    <label for="new-tag-name">Name</label>
-                    <input id="new-tag-name" type="text" v-model="newTagName" required />
+                    <label for="new-tag-type">Category</label>
+                    <select id="new-tag-type" v-model="newTagType" required>
+                        <option value="" disabled>Choose a category</option>
+                        <option v-for="(category, key) in ORDER_CATEGORIES" :key="key" :value="key">{{ category.label }}</option>
+                    </select>
                 </div>
                 <div class="add-field">
-                    <label for="new-tag-type">Type</label>
-                    <select id="new-tag-type" v-model="newTagType" required>
-                        <option value="" disabled>Choose a type</option>
-                        <option v-for="type in tagsTypes" :key="type" :value="type">{{ type }}</option>
-                    </select>
+                    <label for="new-tag-name">Name</label>
+                    <input id="new-tag-name" type="text" v-model="newTagName" maxlength="100" required />
                 </div>
             <button type="submit" class="primary add-button">
                 <span class="material-symbols-outlined" aria-hidden="true">add_circle</span>
-                Add tag
+                Add
             </button>
         </div>
     </form>
@@ -208,6 +217,31 @@ export default {
 
 
 <style>
+
+.categories-intro {
+    color: var(--text-muted);
+    max-width: 48rem;
+}
+
+.category-section {
+    margin-top: var(--space-6);
+}
+
+.category-field {
+    color: var(--text-muted);
+    font-weight: 400;
+    font-size: 1rem;
+}
+
+.tag-edit {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+}
+
+.empty-category {
+    color: var(--text-muted);
+}
 
 .add-form {
     margin-top: 2rem;

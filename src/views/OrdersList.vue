@@ -74,6 +74,7 @@ export default {
         (order.title || "").toLowerCase().includes(q) ||
         (order.requestedBy || "").toLowerCase().includes(q) ||
         (order.supplier || "").toLowerCase().includes(q) ||
+        (order.categoryValue || "").toLowerCase().includes(q) ||
         (order.items || []).some(item => (item.name || "").toLowerCase().includes(q)) ||
         (statusTypesToMessage[order.status] || "").toLowerCase().includes(q)
       );
