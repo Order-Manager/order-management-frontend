@@ -1,0 +1,234 @@
+[
+  {
+    "name": "Seeed XIAO ESP32-S3",
+    "note": "",
+    "category": "Microcontrollers",
+    "supplier": "Mouser",
+    "link": "https://www.mouser.fr/ProductDetail/713-113991114",
+    "price": 6.74
+  },
+  {
+    "name": "MPU-6050 accelerometer and gyroscope",
+    "note": "Pack of 5",
+    "category": "Sensors",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B0CLS1X681",
+    "price": 11.99
+  },
+  {
+    "name": "HC-SR04 ultrasonic range finder",
+    "note": "Pack of 10",
+    "category": "Sensors",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B0D3TNTDFF",
+    "price": 12.5
+  },
+  {
+    "name": "LDR photoresistor",
+    "note": "Pack of 100",
+    "category": "Sensors",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B07F9NNCZ5",
+    "price": 6.99
+  },
+  {
+    "name": "Tilt ball switch",
+    "note": "Pack of 100",
+    "category": "Sensors",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B00M1PMYCE",
+    "price": 13.99
+  },
+  {
+    "name": "INMP441 I2S microphone board",
+    "note": "Pack of 5",
+    "category": "Sensors",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B0CLY1NKLR",
+    "price": 14.24
+  },
+  {
+    "name": "DRV5055 Hall effect sensor",
+    "note": "",
+    "category": "Sensors",
+    "supplier": "Mouser",
+    "link": "https://www.mouser.fr/en/ProductDetail/Texas-Instruments/DRV5055A1QLPGM?qs=rrS6PyfT74eF5s5fWLsdqg%3D%3D",
+    "price": 0.55
+  },
+  {
+    "name": "FSR07CE force sensor",
+    "note": "",
+    "category": "Sensors",
+    "supplier": "Mouser",
+    "link": "https://www.mouser.fr/en/ProductDetail/Ohmite/FSR07CE?qs=0lSvoLzn4L/mJvJPZp0oIg%3D%3D&srsltid=AfmBOorQprEMsl-HKoRVqViDsmHVksddj7Szc1urQVBHWSdKz0QgbqEt",
+    "price": 4.64
+  },
+  {
+    "name": "Potentiometer 10 kΩ",
+    "note": "Pack of 20",
+    "category": "Sensors",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B07RHJZ979",
+    "price": 10.49
+  },
+  {
+    "name": "SG90 9 g servo",
+    "note": "Pack of 10",
+    "category": "Actuators and output",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B0DFCFHD42",
+    "price": 16.14
+  },
+  {
+    "name": "Gear motor 3-6 V",
+    "note": "Pack of 8",
+    "category": "Actuators and output",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B096ZHKTLW",
+    "price": 11.99
+  },
+  {
+    "name": "28BYJ-48 stepper with ULN2003 driver",
+    "note": "Pack of 5",
+    "category": "Actuators and output",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B07VRCZNTF",
+    "price": 13.85
+  },
+  {
+    "name": "OLED screen 128x64",
+    "note": "Pack of 5",
+    "category": "Actuators and output",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B0D2P4J1R6",
+    "price": 14.99
+  },
+  {
+    "name": "Speaker 8 Ω 0.25 W, 23 mm",
+    "note": "",
+    "category": "Actuators and output",
+    "supplier": "Mouser",
+    "link": "https://www.mouser.fr/ProductDetail/Mallory-Sonalert/PSR-23F08S-JQ?qs=naGIj9LdhlMdvjQCvf49NA%3D%3D",
+    "price": 0.47
+  },
+  {
+    "name": "Piezo buzzer 4 kHz 3 V",
+    "note": "",
+    "category": "Actuators and output",
+    "supplier": "Mouser",
+    "link": "https://www.mouser.fr/ProductDetail/TDK/PS1240P02BT?qs=d7g9p1yFhWaZXSY9MjKMkw%3D%3D",
+    "price": 0.45
+  },
+  {
+    "name": "RGB LED 5 mm",
+    "note": "Pack of 100",
+    "category": "Actuators and output",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B0897L6TZ8",
+    "price": 9.2
+  },
+  {
+    "name": "Red LED 5 mm",
+    "note": "",
+    "category": "Actuators and output",
+    "supplier": "Mouser",
+    "link": "https://www.mouser.fr/ProductDetail/Wurth-Elektronik/151034RS03000?qs=sGAEpiMZZMsl8UZd3ZuU6aAY3C3HMTrKis83YM2NYAnR8bgUN2W%252BEQ%3D%3D",
+    "price": 0.09
+  },
+  {
+    "name": "L293D motor driver",
+    "note": "Pack of 10",
+    "category": "ICs and drivers",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B09TK1RPSX",
+    "price": 8.31
+  },
+  {
+    "name": "74HC595 shift register",
+    "note": "Pack of 50",
+    "category": "ICs and drivers",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B0BJKHJM9N",
+    "price": 15.89
+  },
+  {
+    "name": "NE555 timer (SE555P)",
+    "note": "",
+    "category": "ICs and drivers",
+    "supplier": "Mouser",
+    "link": "https://www.mouser.fr/ProductDetail/Texas-Instruments/SE555P?qs=gb35HGp1gQKYdWxuRECDgA%3D%3D",
+    "price": 0.34
+  },
+  {
+    "name": "LM386 audio amplifier",
+    "note": "",
+    "category": "ICs and drivers",
+    "supplier": "Mouser",
+    "link": "https://www.mouser.fr/ProductDetail/Texas-Instruments/LM386N-1-NOPB?qs=QbsRYf82W3GLguMHc1jDPg%3D%3D",
+    "price": 0.47
+  },
+  {
+    "name": "MAX98357 I2S amplifier board",
+    "note": "Pack of 6",
+    "category": "ICs and drivers",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B0F6T685VJ",
+    "price": 16.39
+  },
+  {
+    "name": "IRLB8721 MOSFET, logic level",
+    "note": "Pack of 10",
+    "category": "Transistors and passives",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B0CBKFT9DD",
+    "price": 11.98
+  },
+  {
+    "name": "IRFZ44N MOSFET",
+    "note": "Pack of 10",
+    "category": "Transistors and passives",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B08H56RJY9",
+    "price": 8.89
+  },
+  {
+    "name": "Breadboards and Dupont wires",
+    "note": "2 small and 2 big breadboards",
+    "category": "Prototyping",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B0B5TCKTQH",
+    "price": 14.89
+  },
+  {
+    "name": "Push button 6x6x5 mm",
+    "note": "Pack of 100",
+    "category": "Prototyping",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B09WVFHMSV",
+    "price": 6.23
+  },
+  {
+    "name": "Slide switch",
+    "note": "Pack of 200",
+    "category": "Prototyping",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B09TVFF6KW",
+    "price": 8.86
+  },
+  {
+    "name": "Storage box 1.4 L",
+    "note": "Pack of 10",
+    "category": "Kit supplies",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B0DF2JRLHM",
+    "price": 19.79
+  },
+  {
+    "name": "Foam pad 40x30x1 cm",
+    "note": "Cuts into 6x4 kit inserts",
+    "category": "Kit supplies",
+    "supplier": "Amazon FR",
+    "link": "https://www.amazon.fr/dp/B0FDK9H7NK",
+    "price": 16.98
+  }
+]

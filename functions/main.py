@@ -134,6 +134,36 @@ def updateLastUpdate(event: firestore_fn.Event[firestore_fn.DocumentSnapshot | N
             notifyReferent(after, event.data.after.id)
 
         current_updates = before.get("updates")
+        order_link = f"<a href='{APP_URL}/#/view/{escape(str(event.data.after.id))}'>here</a>"
+
+        # The referent asked for changes: their message goes in the history as a comment, in one email
+        if after.get("status") == "changesRequested":
+            referent = after.get("changesRequestedBy")
+            message = after.get("changesRequestedMessage") or ""
+            now = datetime.datetime.now()
+            current_updates.append({"type": "comment", "date": now, "author": referent, "message": message})
+            current_updates.append({"type": "changes-requested", "date": now, "author": referent})
+            event.data.after.reference.update({"updates": current_updates, "lastUpdate": now})
+            sendEmail(
+                to=after.get("requestedBy"),
+                subject="Changes requested on your order",
+                message=f"{escape(str(referent))} asked for changes to your order '{escape(str(after.get('title')))}':<br><br>{escape(message)}<br><br>Update your order and send it back for review {order_link}."
+            )
+
+        # The student made the changes and sent the order back, with a reply
+        elif before.get("status") == "changesRequested" and after.get("status") == "pendingIR":
+            student = after.get("requestedBy")
+            message = after.get("sentBackMessage") or ""
+            now = datetime.datetime.now()
+            current_updates.append({"type": "comment", "date": now, "author": student, "message": message})
+            current_updates.append({"type": "sent-back", "date": now, "author": student})
+            event.data.after.reference.update({"updates": current_updates, "lastUpdate": now})
+            sendEmail(
+                to=after.get("changesRequestedBy") or after.get("referent"),
+                subject="Order sent back for review",
+                message=f"{escape(str(student))} updated the order '{escape(str(after.get('title')))}' and sent it back for review:<br><br>{escape(message)}<br><br>Review it {order_link}."
+            )
+
         if after.get("status") == "cancelled":
 
             update = {
@@ -300,3 +330,44 @@ def sendEmail(to: str, subject: str, message: str) -> None:
         })
     except Exception as e:
         print(f"Failed to send email: {e}")
+
+
+# Dev only: lets the people in ACCOUNT_SWITCHERS sign in as test accounts and back, without email links.
+# Only defined where functions/.env.<project> sets ACCOUNT_SWITCHERS, so it never exists on prod.
+ACCOUNT_SWITCHERS = {e.strip().lower() for e in os.environ.get("ACCOUNT_SWITCHERS", "").split(",") if e.strip()}
+
+# Test accounts, created by `node scripts/seed-dev.mjs --personas`
+PERSONAS = {
+    "student": "persona-student",
+    "referent": "persona-referent",
+    "admin": "persona-admin",
+}
+
+if ACCOUNT_SWITCHERS:
+    from firebase_admin import auth as admin_auth
+
+    @https_fn.on_call(region=REGION)
+    def switchAccount(req: https_fn.CallableRequest) -> dict:
+        if req.auth is None:
+            raise https_fn.HttpsError(https_fn.FunctionsErrorCode.UNAUTHENTICATED, "Sign in first.")
+        claims = req.auth.token
+        email = str(claims.get("email", "")).lower()
+        if email in ACCOUNT_SWITCHERS and claims.get("email_verified") is True:
+            # Signed in as themselves: remember who to switch back to
+            home = req.auth.uid
+        elif isinstance(claims.get("switcherHome"), str) and req.auth.uid in [*PERSONAS.values(), claims["switcherHome"]]:
+            # Already switched by this function: the claim can only come from a token it minted
+            home = claims["switcherHome"]
+        else:
+            raise https_fn.HttpsError(https_fn.FunctionsErrorCode.PERMISSION_DENIED, "Not allowed to switch accounts.")
+
+        account = (req.data or {}).get("account")
+        if account == "home":
+            uid = home
+        elif account in PERSONAS:
+            uid = PERSONAS[account]
+        else:
+            raise https_fn.HttpsError(https_fn.FunctionsErrorCode.INVALID_ARGUMENT, "Unknown account.")
+
+        token = admin_auth.create_custom_token(uid, {"switcherHome": home})
+        return {"token": token.decode() if isinstance(token, bytes) else token}

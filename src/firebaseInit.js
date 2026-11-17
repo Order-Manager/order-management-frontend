@@ -30,8 +30,8 @@ export const firebaseApp = initializeApp(firebaseConfig);
 export const db = getFirestore(firebaseApp)
 
 if (import.meta.env.VITE_USE_EMULATORS === "true") {
-    connectFirestoreEmulator(db, "127.0.0.1", 8080);
-    connectAuthEmulator(getAuth(firebaseApp), "http://127.0.0.1:9099", { disableWarnings: true });
+    connectFirestoreEmulator(db, "127.0.0.1", Number(import.meta.env.VITE_EMULATOR_FIRESTORE_PORT || 8080));
+    connectAuthEmulator(getAuth(firebaseApp), `http://127.0.0.1:${import.meta.env.VITE_EMULATOR_AUTH_PORT || 9099}`, { disableWarnings: true });
 } else {
     getAnalytics(firebaseApp);
 }

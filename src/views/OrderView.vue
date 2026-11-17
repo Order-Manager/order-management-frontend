@@ -2,12 +2,12 @@
 import { computed, ref } from "vue";
 
 import { useDocument, useFirestore, useCurrentUser, useCollection } from 'vuefire'
-import { doc, updateDoc, collection, arrayUnion, Timestamp } from "firebase/firestore";
+import { doc, updateDoc, collection, arrayUnion, Timestamp, serverTimestamp } from "firebase/firestore";
 
 
 import { useRoute } from 'vue-router'
 
-import { updateTypesToMessage, statusTypesToMessage, statusTypesToColor, updateTypesToColor, updateTypesToIcon, priorityToColor, MIN_JUSTIFICATION, JUSTIFICATION_PLACEHOLDER } from '../utils/definitions.js'
+import { updateTypesToMessage, statusTypesToMessage, statusTypesToColor, updateTypesToColor, updateTypesToIcon, priorityToColor, MIN_JUSTIFICATION, JUSTIFICATION_PLACEHOLDER, orderCategoryText } from '../utils/definitions.js'
 
 import { useToast } from "vue-toastification";
 
@@ -15,15 +15,22 @@ import StatusBadge from '../components/StatusBadge.vue'
 import RelativeTime from '../components/RelativeTime.vue'
 import OrderProgress from '../components/OrderProgress.vue'
 import InvoicesPanel from '../components/InvoicesPanel.vue'
-import { formatEuros, orderTotal } from '../utils/dates.js'
+import StockBadge from '../components/StockBadge.vue'
+import { STOCK_LEVELS, normalizeLink, partsByLink } from '../utils/catalog.js'
+import { formatEuros, orderTotal, itemTotal } from '../utils/dates.js'
 import { displayName } from '../utils/people.js'
 
 
 export default {
     components: {
-        StatusBadge, RelativeTime, OrderProgress, InvoicesPanel
+        StatusBadge, RelativeTime, OrderProgress, InvoicesPanel, StockBadge
     },
     methods: {
+        // The lab's stock of the catalogue part with this item's link, if there is one
+        stockFor(item) {
+            const part = this.catalogByLink.get(normalizeLink(item.link));
+            return part && !part.hidden ? part.stock : undefined;
+        },
         goToOrder(date) {
             this.$router.push(`/view/${date}`)
         },
@@ -83,6 +90,141 @@ export default {
                 this.busy = false
             }
         },
+        // Ticket-style loop: the referent asks for changes, the student makes them and sends the order back.
+        // The message travels with the status change; the update function puts it in the history and emails it.
+        openChangesDialog() {
+            this.changesMessage = ""
+            this.changesError = ""
+            this.$refs.changesDialog.showModal()
+        },
+        async confirmRequestChanges() {
+            const message = this.changesMessage.trim()
+            if (!message) {
+                this.changesError = "Say what needs to change: the student will receive it by email."
+                this.$refs.changesMessage.focus()
+                return
+            }
+            this.busy = true
+            try {
+                await updateDoc(doc(useFirestore(), 'orders', this.order_id), {
+                    "status": "changesRequested",
+                    "changesRequestedBy": this.currentUser.email,
+                    "changesRequestedMessage": message,
+                    "changesRequestedAt": new Date(),
+                })
+                this.$refs.changesDialog.close()
+                this.showSuccess(`Changes requested. ${this.order.requestedBy} will get your message by email.`)
+            } catch (error) {
+                this.showError("Could not request changes: " + error.message)
+            } finally {
+                this.busy = false
+            }
+        },
+        openSendBackDialog() {
+            if (this.editingItems) {
+                this.showWarning("Save your item changes first.")
+                return
+            }
+            this.sendBackMessage = ""
+            this.sendBackError = ""
+            this.$refs.sendBackDialog.showModal()
+        },
+        async confirmSendBack() {
+            const message = this.sendBackMessage.trim()
+            if (!message) {
+                this.sendBackError = "Say what you changed, so the referent knows what to look at."
+                this.$refs.sendBackMessage.focus()
+                return
+            }
+            this.busy = true
+            try {
+                await updateDoc(doc(useFirestore(), 'orders', this.order_id), {
+                    "status": "pendingIR",
+                    "sentBackMessage": message,
+                    "sentBackAt": serverTimestamp(),
+                })
+                this.$refs.sendBackDialog.close()
+                this.showSuccess("Sent back for review. Your referent will get an email.")
+            } catch (error) {
+                this.showError("Could not send the order back: " + error.message)
+            } finally {
+                this.busy = false
+            }
+        },
+        // While editing, a rejected item can be put back as it is; the referent sees it on the next review
+        putBack(item) {
+            delete item.rejected
+            delete item.rejectedReason
+            delete item.rejectedBy
+            delete item.rejectedAt
+        },
+        // Referents can turn down single items while the order hasn't been placed yet
+        canRejectItems() {
+            return this.isReviewer() && !this.editingItems && ['pendingIR', 'processingOrder'].includes(this.order.status)
+        },
+        openRejectItemDialog(index) {
+            const kept = this.order.items.filter(item => !item.rejected).length
+            if (kept <= 1) {
+                this.showWarning("This is the last item left: reject the whole order instead.")
+                return
+            }
+            this.rejectItemIndex = index
+            this.rejectItemReason = ""
+            this.rejectItemError = ""
+            this.$refs.rejectItemDialog.showModal()
+        },
+        // Same order of writes as rejecting the order: the comment (which emails the student), then the items
+        async confirmRejectItem() {
+            const reason = this.rejectItemReason.trim()
+            if (!reason) {
+                this.rejectItemError = "Please give a reason: the student will receive it by email."
+                this.$refs.rejectItemReason.focus()
+                return
+            }
+            const item = this.order.items[this.rejectItemIndex]
+            this.busy = true
+            try {
+                await this.postItemComment(`Item rejected: “${item.name}”. ${reason}`)
+                await this.writeItems(this.order.items.map((it, i) => i === this.rejectItemIndex
+                    ? { ...it, rejected: true, rejectedReason: reason, rejectedBy: this.currentUser.email, rejectedAt: new Date() }
+                    : it))
+                this.$refs.rejectItemDialog.close()
+                this.showSuccess(`Item rejected. ${this.order.requestedBy} will get your reason by email.`)
+            } catch (error) {
+                this.showError("Could not reject the item: " + error.message)
+            } finally {
+                this.busy = false
+            }
+        },
+        async restoreItem(index) {
+            const item = this.order.items[index]
+            this.busy = true
+            try {
+                await this.postItemComment(`Item restored: “${item.name}” will be ordered after all.`)
+                await this.writeItems(this.order.items.map((it, i) => {
+                    if (i !== index) return it
+                    const { rejected, rejectedReason, rejectedBy, rejectedAt, ...rest } = it
+                    return rest
+                }))
+                this.showSuccess(`${item.name} restored.`)
+            } catch (error) {
+                this.showError("Could not restore the item: " + error.message)
+            } finally {
+                this.busy = false
+            }
+        },
+        postItemComment(message) {
+            return updateDoc(doc(useFirestore(), 'orders', this.order_id), {
+                "updates": arrayUnion({ "type": "comment", "date": new Date(), "author": this.currentUser.email, "message": message })
+            })
+        },
+        writeItems(items) {
+            return updateDoc(doc(useFirestore(), 'orders', this.order_id), {
+                items,
+                "lastItemsUpdatedBy": this.currentUser.email,
+                "ignoreItemsModification": true,
+            })
+        },
         // Archiving notifies nobody. lastUpdate moves by 1 ms so the update function, which stamps
         // "now" only when lastUpdate is unchanged, leaves the order's date as it was.
         async setArchived(archived) {
@@ -109,6 +251,10 @@ export default {
             switch (order.status) {
                 case 'draft':
                     return this.isAuthor() ? "This is a draft. Submit it when it's ready for review." : "Draft: not submitted yet."
+                case 'changesRequested':
+                    return this.isAuthor()
+                        ? "Your referent asked for changes. Edit your items if needed, then send the order back for review."
+                        : "Waiting for the student to make the changes and send the order back."
                 case 'pendingIR':
                     return admin ? "Review this order: approve it, reject it, or ask another referent." : "Waiting for a referent to review it."
                 case 'approvedIR':
@@ -131,7 +277,7 @@ export default {
         isEnded() {
             return ['refusedIR', 'cancelled'].includes(this.order.status)
         },
-        formatEuros, orderTotal, displayName,
+        formatEuros, orderTotal, itemTotal, displayName,
         // Drafts can be saved without a full justification; ask for one before they go to review
         publishOrder() {
             if ((this.order.comment || "").trim().length >= MIN_JUSTIFICATION) {
@@ -199,6 +345,41 @@ export default {
                 "reviewIRBy": currentUser.value.email,
             })
             // console.log(orderRef)
+        },
+        // The stage's own actions (shown as buttons) and the occasional ones (in the More menu)
+        hasMainActions() {
+            const status = this.order.status
+            return (this.isAuthor() && ['draft', 'pendingIR', 'changesRequested'].includes(status))
+                || (this.isReviewer() && ['pending', 'refused', 'pendingIR', 'refusedIR', 'processingOrder', 'ordered', 'received', 'changesRequested'].includes(status))
+        },
+        hasMoreActions() {
+            return this.isReviewer()
+        },
+        canAskAnotherReferent() {
+            return this.isReviewer() && ['pendingIR', 'refusedIR'].includes(this.order.status)
+        },
+        closeMore(returnFocus) {
+            this.moreOpen = false
+            if (returnFocus) this.$nextTick(() => this.$refs.moreButton?.focus())
+        },
+        // Close the menu when the keyboard moves focus out of it (Safari doesn't focus buttons on click, hence the relatedTarget check)
+        onMoreFocusOut(event) {
+            if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget)) this.moreOpen = false
+        },
+        // ...and on a click or tap anywhere else
+        onOutsidePointer(event) {
+            if (!event.target.closest('.more-actions')) this.moreOpen = false
+        },
+        openReviewRequestDialog() {
+            this.closeMore(false)
+            this.selectedReviewer = ""
+            this.$refs.reviewRequestDialog.showModal()
+            this.$nextTick(() => this.$refs.reviewerSelect.focus())
+        },
+        sendReviewRequest() {
+            if (!this.selectedReviewer) return
+            this.requestReview()
+            this.$refs.reviewRequestDialog.close()
         },
         requestReview() {
             const db = useFirestore()
@@ -284,10 +465,7 @@ export default {
         showInfo(message) {
             this.toast.info(message);
         },
-        tagName(id) {
-            const tag = this.tags.find(t => t.id === id);
-            return tag ? tag.name : id;
-        },
+        orderCategoryText,
         isReviewer() {
             return this.userData && this.userData.isIR;
         },
@@ -296,22 +474,23 @@ export default {
         },
         canEdit() {
             return (
-                this.isAuthor() && ["draft", "pendingIR"].includes(this.order.status)
+                this.isAuthor() && ["draft", "pendingIR", "changesRequested"].includes(this.order.status)
                 || this.isReviewer()
             );
         },
         updateItemStatus(index, field, value) {
             this.order.items[index][field] = value;
 
-            if (this.order.status == "processingOrder" && this.order.items.every(item => item.ordered)) {
+            // Rejected items won't be bought, so they don't hold the order back
+            if (this.order.status == "processingOrder" && this.order.items.every(item => item.rejected || item.ordered)) {
                 this.setOrderStatus("ordered");
             }
 
-            if (this.order.status == "ordered" && this.order.items.every(item => item.delivered)) {
+            if (this.order.status == "ordered" && this.order.items.every(item => item.rejected || item.delivered)) {
                 this.setOrderStatus("received");
             }
 
-            if (this.order.status == "received" && this.order.items.every(item => item.completed)) {
+            if (this.order.status == "received" && this.order.items.every(item => item.rejected || item.completed)) {
                 this.setOrderStatus("completed");
             }
 
@@ -387,6 +566,7 @@ export default {
             this.showInfo("Item removed.");
         },
         getItemNextStatus(item) {
+            if (item.rejected) return "none";
             if (item.completed) return "none";
             if (this.order.status == "completed") return "none";
             if (item.delivered) return "completed";
@@ -397,6 +577,7 @@ export default {
             return "none";
         },
         getItemStatus(item) {
+            if (item.rejected) return "rejected";
             if (item.completed) return "completed";
             if (this.order.status == "completed") return "completed";
             if (item.delivered) return "delivered";
@@ -407,6 +588,7 @@ export default {
         },
         getItemStatusColor(item) {
             let status = this.getItemStatus(item);
+            if (status == "rejected") return "red";
             if (status == "completed") return "green";
             if (status == "delivered") return "blue";
             if (status == "ordered") return "blue";
@@ -442,12 +624,18 @@ export default {
         order_id: String,
     },
     watch: {
+        moreOpen(open) {
+            document[open ? 'addEventListener' : 'removeEventListener']('pointerdown', this.onOutsidePointer)
+        },
         "order.title": {
             handler(title) {
                 if (this.order) document.title = `${title || 'Untitled order'} · IFT Orders`;
             },
             immediate: true,
         },
+    },
+    beforeUnmount() {
+        document.removeEventListener('pointerdown', this.onOutsidePointer)
     },
     data() {
         return {
@@ -457,7 +645,15 @@ export default {
             justification: "",
             justificationError: "",
             rejectError: "",
+            changesMessage: "",
+            changesError: "",
+            sendBackMessage: "",
+            sendBackError: "",
+            rejectItemIndex: -1,
+            rejectItemReason: "",
+            rejectItemError: "",
             busy: false,
+            moreOpen: false, // Reviewers' "More" menu
         };
     },
     setup() {
@@ -478,10 +674,20 @@ export default {
             return suppliers.value.find(s => s.name === order.value.supplier).webpage;
         })
         const selectedReviewer = ref("");
+        const catalog = useCollection(collection(db, 'catalog'))
+        const catalogByLink = computed(() => partsByLink(catalog.value))
+        // The stock levels shown in this order's items, explained under the table
+        const stockLegend = computed(() => {
+            const shown = new Set((order.value?.items || []).map(item => {
+                const part = catalogByLink.value.get(normalizeLink(item.link));
+                return part && !part.hidden ? part.stock : undefined;
+            }))
+            return Object.entries(STOCK_LEVELS).filter(([key]) => shown.has(key)).map(([key, level]) => ({ key, ...level }))
+        })
 
         return {
             MIN_JUSTIFICATION, JUSTIFICATION_PLACEHOLDER,
-            order, order_id, updateTypesToMessage, statusTypesToMessage, userData, statusTypesToColor, updateTypesToColor, updateTypesToIcon, priorityToColor, tags, currentUser, toast, supplierUrl, reviewers, selectedReviewer
+            order, order_id, updateTypesToMessage, statusTypesToMessage, userData, statusTypesToColor, updateTypesToColor, updateTypesToIcon, priorityToColor, tags, currentUser, toast, supplierUrl, reviewers, selectedReviewer, catalogByLink, stockLegend
         }
     }
 }
@@ -502,10 +708,66 @@ export default {
                 <span class="material-symbols-outlined" aria-hidden="true">{{ isEnded() ? 'info' : 'arrow_forward' }}</span>
                 {{ nextStep() }}
             </p>
+            <div v-if="order.status === 'changesRequested' && order.changesRequestedMessage" class="changes-note">
+                <span class="material-symbols-outlined" aria-hidden="true">rate_review</span>
+                <div>
+                    <p class="changes-note-title">{{ displayName(order.changesRequestedBy) }} asked for changes <RelativeTime v-if="order.changesRequestedAt" :value="order.changesRequestedAt" /></p>
+                    <p class="changes-note-message">{{ order.changesRequestedMessage }}</p>
+                </div>
+            </div>
             <p v-if="order.archived" class="archived-note">
                 <span class="material-symbols-outlined" aria-hidden="true">inventory_2</span>
                 <span>{{ order.archivedAt ? 'Archived ' : 'Archived' }}<RelativeTime v-if="order.archivedAt" :value="order.archivedAt" />. It only appears under Archived in the order list.</span>
             </p>
+            <!-- What can be done next: the stage's main action first, then the occasional ones, then More -->
+            <div v-if="hasMainActions() || hasMoreActions()" class="order-actions" role="group" aria-label="Order actions">
+                <div class="order-actions-main">
+                    <button v-if="isAuthor() && order.status === 'draft'" type="button" class="primary" :disabled="busy" @click="publishOrder()">
+                        <span class="material-symbols-outlined" aria-hidden="true">send</span>Submit order
+                    </button>
+                    <button v-if="isAuthor() && order.status === 'changesRequested'" type="button" class="primary" :disabled="busy" @click="openSendBackDialog()">
+                        <span class="material-symbols-outlined" aria-hidden="true">reply</span>Send back for review
+                    </button>
+                    <button v-if="isReviewer() && ['pending', 'refused', 'pendingIR', 'refusedIR'].includes(order.status)" type="button" class="primary" :disabled="busy" @click="approvedByIR(false)">
+                        <span class="material-symbols-outlined" aria-hidden="true">check</span>Approve order
+                    </button>
+                    <button v-if="isReviewer() && order.status === 'processingOrder'" type="button" class="primary" :disabled="busy" @click="setOrderStatus('ordered')">
+                        <span class="material-symbols-outlined" aria-hidden="true">shopping_cart_checkout</span>Mark as ordered
+                    </button>
+                    <button v-if="isReviewer() && order.status === 'ordered'" type="button" class="primary" :disabled="busy" @click="setOrderStatus('received')">
+                        <span class="material-symbols-outlined" aria-hidden="true">inventory</span>Mark as delivered
+                    </button>
+                    <button v-if="isReviewer() && order.status === 'received'" type="button" class="primary" :disabled="busy" @click="setOrderStatus('completed')">
+                        <span class="material-symbols-outlined" aria-hidden="true">task_alt</span>Mark as completed
+                    </button>
+                    <button v-if="isReviewer() && ['pendingIR', 'processingOrder'].includes(order.status)" type="button" :disabled="busy" @click="openChangesDialog()">
+                        <span class="material-symbols-outlined" aria-hidden="true">rate_review</span>Request changes
+                    </button>
+                    <button v-if="isReviewer() && ['pendingIR', 'processingOrder', 'changesRequested'].includes(order.status)" type="button" class="danger" :disabled="busy" @click="openRejectDialog()">
+                        <span class="material-symbols-outlined" aria-hidden="true">block</span>Reject order
+                    </button>
+                    <button v-if="isAuthor() && ['draft', 'pendingIR', 'changesRequested'].includes(order.status)" type="button" class="quiet-danger" :disabled="busy" @click="$refs.cancelDialog.showModal()">
+                        Cancel order
+                    </button>
+                </div>
+                <div v-if="hasMoreActions()" class="more-actions" @focusout="onMoreFocusOut">
+                    <button type="button" ref="moreButton" aria-controls="more-actions-list" :aria-expanded="moreOpen" @click="moreOpen = !moreOpen">
+                        <span class="material-symbols-outlined" aria-hidden="true">more_horiz</span>More
+                    </button>
+                    <ul v-show="moreOpen" id="more-actions-list" class="more-actions-list" @keydown.esc.stop="closeMore(true)">
+                        <li v-if="canAskAnotherReferent()">
+                            <button type="button" @click="openReviewRequestDialog()">
+                                <span class="material-symbols-outlined" aria-hidden="true">person_add</span>Ask another referent…
+                            </button>
+                        </li>
+                        <li>
+                            <button type="button" :disabled="busy" @click="closeMore(true); setArchived(!order.archived)">
+                                <span class="material-symbols-outlined" aria-hidden="true">{{ order.archived ? 'unarchive' : 'inventory_2' }}</span>{{ order.archived ? 'Unarchive' : 'Archive' }}
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+            </div>
             <dl class="summary-facts">
                 <div>
                     <dt>Referent</dt>
@@ -524,8 +786,8 @@ export default {
                     <dd :class="priorityToColor[order.priority] ? priorityToColor[order.priority] : 'green'">{{ order.priority ? order.priority.charAt(0).toUpperCase()+ order.priority.slice(1) : "Low" }}</dd>
                 </div>
                 <div>
-                    <dt>Tags</dt>
-                    <dd>{{ (order.tags || []).map(tagName).join(", ") || "None" }}</dd>
+                    <dt>{{ order.category ? 'For' : 'Tags' }}</dt>
+                    <dd>{{ orderCategoryText(order, tags) }}</dd>
                 </div>
                 <div>
                     <dt>Last update</dt>
@@ -534,10 +796,15 @@ export default {
             </dl>
         </section>
 
-        <h2 class="section-title">
-            <span class="material-symbols-outlined" aria-hidden="true">shopping_cart</span>
-            Items <span class="group-count">{{ order.items.length }}</span>
-        </h2>
+        <div class="section-header">
+            <h2 class="section-title">
+                <span class="material-symbols-outlined" aria-hidden="true">shopping_cart</span>
+                Items <span class="group-count">{{ order.items.length }}</span>
+            </h2>
+            <button type="button" v-if="canEdit()" :class="{ primary: editingItems }" @click="toggleEditItems()">
+                <span class="material-symbols-outlined" aria-hidden="true">{{ editingItems ? 'check' : 'edit' }}</span>{{ editingItems ? "Save items" : "Edit items" }}
+            </button>
+        </div>
 
         <div id="items-list" class="table-scroll">
             <table class="data-table orderview-table">
@@ -556,7 +823,13 @@ export default {
                 <tbody>
                     <tr v-for="(item, index) in order.items" :key="index">
                         <template v-if="editingItems">
-                            <td class="col-name" data-label="Name"><input type="text" v-model="item.name" required :aria-label="`Item ${index + 1} name`"></td>
+                            <td class="col-name" data-label="Name">
+                                <input type="text" v-model="item.name" required :aria-label="`Item ${index + 1} name`">
+                                <p v-if="item.rejected" class="item-rejection">
+                                    Rejected<template v-if="item.rejectedReason">: {{ item.rejectedReason }}</template>
+                                    <button type="button" class="put-back" @click="putBack(item)">Put back<span class="visually-hidden"> {{ item.name }}</span></button>
+                                </p>
+                            </td>
                             <td class="col-link" data-label="Link"><input type="url" v-model="item.link" required :aria-label="`Item ${index + 1} link`"></td>
                             <td class="col-qty" data-label="Quantity"><input type="number" inputmode="numeric" v-model="item.quantity" required min="1" :aria-label="`Item ${index + 1} quantity`"></td>
                             <td class="col-price" data-label="Unit price (€)"><input type="number" inputmode="decimal" v-model="item.price" min="0.00" max="10000.00" step="0.001" required :aria-label="`Item ${index + 1} unit price in euros`"></td>
@@ -573,24 +846,51 @@ export default {
                             </td>
                         </template>
                         <template v-else>
-                            <td class="col-name">{{ item.name }}</td>
+                            <td class="col-name">
+                                <span :class="{ 'rejected-name': item.rejected }">{{ item.name }}</span>
+                                <StockBadge v-if="!item.rejected" compact :stock="stockFor(item)" />
+                                <span v-if="item.rejected" class="item-rejection">
+                                    Rejected by {{ displayName(item.rejectedBy) }}<template v-if="item.rejectedReason">: {{ item.rejectedReason }}</template>
+                                </span>
+                            </td>
                             <td class="col-link item-link"><a :href="item.link" :title="item.link" target="_blank" rel="noopener">{{ item.link }}<span class="visually-hidden"> (opens in a new tab)</span></a></td>
                             <td class="col-qty" data-label="Quantity">{{ item.quantity }}</td>
                             <td class="col-price" data-label="Unit price">{{ formatEuros(parseFloat(item.price)) }}</td>
-                            <td class="col-total" data-label="Total">{{ formatEuros(orderTotal([item])) }}</td>
+                            <td class="col-total" data-label="Total">
+                                <s v-if="item.rejected"><span class="visually-hidden">Not counted: </span>{{ formatEuros(itemTotal(item)) }}</s>
+                                <template v-else>{{ formatEuros(itemTotal(item)) }}</template>
+                            </td>
                             <td class="col-actions">
-                                <button v-if="isReviewer() && getItemNextStatus(item) != 'none'" type="button"
-                                    v-on:click="updateItemStatus(index, getItemNextStatus(item), true)" class="mark-item">
-                                    Mark as {{ getItemNextStatus(item) }}<span class="visually-hidden">: {{ item.name }}</span>
-                                </button>
-                                <span v-else class="order-item-status" :class="getItemStatusColor(item)">
-                                    {{ getItemStatus(item) }}
-                                </span>
+                                <div class="item-actions">
+                                    <button v-if="isReviewer() && getItemNextStatus(item) != 'none'" type="button"
+                                        v-on:click="updateItemStatus(index, getItemNextStatus(item), true)" class="mark-item">
+                                        Mark as {{ getItemNextStatus(item) }}<span class="visually-hidden">: {{ item.name }}</span>
+                                    </button>
+                                    <span v-else class="order-item-status" :class="getItemStatusColor(item)">
+                                        {{ getItemStatus(item) }}
+                                    </span>
+                                    <template v-if="canRejectItems()">
+                                        <button v-if="item.rejected" type="button" :disabled="busy" @click="restoreItem(index)">
+                                            Restore<span class="visually-hidden"> {{ item.name }}</span>
+                                        </button>
+                                        <button v-else-if="!item.ordered" type="button" class="icon-button red" :disabled="busy"
+                                            :aria-label="`Reject item: ${item.name}`" title="Reject this item" @click="openRejectItemDialog(index)">
+                                            <span class="material-symbols-outlined" aria-hidden="true">block</span>
+                                        </button>
+                                    </template>
+                                </div>
                             </td>
                         </template>
                     </tr>
                 </tbody>
             </table>
+            <p v-if="!editingItems && stockLegend.length" class="stock-legend">
+                <span v-for="level in stockLegend" :key="level.key" :class="level.color">
+                    <span class="material-symbols-outlined" aria-hidden="true">{{ level.icon }}</span>
+                    {{ level.item }}
+                </span>
+                <span>(from the <router-link to="/parts">parts catalogue</router-link>)</span>
+            </p>
             <div v-if="editingItems" class="full-width center-both">
                 <button type="button" class="icon-button add-item" v-on:click="addItem()" aria-label="Add item" title="Add item">
                     <span class="material-symbols-outlined" aria-hidden="true">add_circle</span>
@@ -601,73 +901,6 @@ export default {
             </div>
         </div>
 
-        <div id="approval-buttons">
-            <button type="button" v-if="canEdit()" @click="toggleEditItems()">
-                {{ editingItems ? "Save items" : "Edit items" }}
-            </button>
-
-            <button type="button" class="primary"
-                v-if="isAuthor() && ['draft'].includes(order.status)"
-                v-on:click="publishOrder()">
-                Submit order
-            </button>
-
-            <button type="button" class="primary"
-                v-if="isReviewer() && ['pending', 'refused', 'pendingIR', 'refusedIR'].includes(order.status)"
-                v-on:click="approvedByIR(false)">
-                Approve order
-            </button>
-
-            <div v-if="isReviewer() && ['pendingIR', 'refusedIR'].includes(order.status)" class="center-row small-gap">
-                <label for="reviewer-select" class="visually-hidden">Reviewer</label>
-                <select id="reviewer-select" v-model="selectedReviewer">
-                    <option value="" disabled>Choose a reviewer</option>
-                    <option v-for="reviewer in reviewers.filter(reviewer =>  isReviewRequestAllowed(reviewer.email))" :key="reviewer.id" :value="reviewer.email">{{ reviewer.email }}</option>
-                </select>
-                <button type="button"
-                    v-on:click="requestReview()">
-                    Send review request
-                </button>
-            </div>
-
-            <button type="button" class="primary"
-                v-if="isReviewer() && ['processingOrder'].includes(order.status)"
-                v-on:click="setOrderStatus('ordered')">
-                Mark as ordered
-            </button>
-
-            <button type="button" class="primary"
-                v-if="isReviewer() && ['ordered'].includes(order.status)"
-                v-on:click="setOrderStatus('received')">
-                Mark as delivered
-            </button>
-
-            <button type="button" class="primary"
-                v-if="isReviewer() && ['received'].includes(order.status)"
-                v-on:click="setOrderStatus('completed')">
-                Mark as completed
-            </button>
-
-            <button type="button" class="danger"
-                v-if="isReviewer() && ['pendingIR', 'processingOrder'].includes(order.status)"
-                v-on:click="openRejectDialog()">
-                Reject order
-            </button>
-
-            <button type="button" v-if="isReviewer() && !order.archived" :disabled="busy" @click="setArchived(true)">
-                Archive
-            </button>
-            <button type="button" v-if="isReviewer() && order.archived" :disabled="busy" @click="setArchived(false)">
-                Unarchive
-            </button>
-
-            <button type="button" class="danger"
-                v-if="isAuthor() && ['draft', 'pendingIR'].includes(order.status)"
-                v-on:click="$refs.cancelDialog.showModal()">
-                Cancel order
-            </button>
-
-        </div>
 
 
         <InvoicesPanel
@@ -733,6 +966,22 @@ export default {
             </div>
         </form>
 
+        <dialog ref="reviewRequestDialog" class="dialog" aria-labelledby="review-request-title">
+            <form @submit.prevent="sendReviewRequest()" novalidate>
+                <h2 id="review-request-title">Ask another referent</h2>
+                <p>They get an email asking them to review this order. You can ask the same person again after two days.</p>
+                <label for="reviewer-select">Referent</label>
+                <select id="reviewer-select" ref="reviewerSelect" v-model="selectedReviewer" required>
+                    <option value="" disabled>Choose a referent</option>
+                    <option v-for="reviewer in reviewers.filter(reviewer => reviewer.email !== currentUser.email && isReviewRequestAllowed(reviewer.email))" :key="reviewer.id" :value="reviewer.email">{{ displayName(reviewer.email) }} ({{ reviewer.email }})</option>
+                </select>
+                <div class="dialog-actions">
+                    <button type="button" @click="$refs.reviewRequestDialog.close()">Cancel</button>
+                    <button type="submit" class="primary" :disabled="!selectedReviewer">Send request</button>
+                </div>
+            </form>
+        </dialog>
+
         <dialog ref="rejectDialog" class="dialog" aria-labelledby="reject-title">
             <form @submit.prevent="confirmReject()" novalidate>
                 <h2 id="reject-title">Reject this order?</h2>
@@ -752,6 +1001,83 @@ export default {
                 <div class="dialog-actions">
                     <button type="button" @click="$refs.rejectDialog.close()">Keep reviewing</button>
                     <button type="submit" class="danger" :disabled="busy">Reject order</button>
+                </div>
+            </form>
+        </dialog>
+
+        <dialog ref="changesDialog" class="dialog" aria-labelledby="changes-title">
+            <form @submit.prevent="confirmRequestChanges()" novalidate>
+                <h2 id="changes-title">Request changes</h2>
+                <p>
+                    The order goes back to {{ order.requestedBy }}, who gets your message by email, makes the changes
+                    and sends it back for review.<template v-if="order.status === 'processingOrder'"> It will need approving again.</template>
+                </p>
+                <label for="changes-message">What should change?</label>
+                <textarea
+                    id="changes-message"
+                    ref="changesMessage"
+                    v-model="changesMessage"
+                    rows="4"
+                    maxlength="1000"
+                    required
+                    placeholder="e.g. The servo you picked is out of stock: choose another one, or explain why you need this exact model."
+                    :aria-invalid="!!changesError"
+                    aria-describedby="changes-error"
+                ></textarea>
+                <p id="changes-error" class="field-error" role="alert">{{ changesError }}</p>
+                <div class="dialog-actions">
+                    <button type="button" @click="$refs.changesDialog.close()">Keep reviewing</button>
+                    <button type="submit" class="primary" :disabled="busy">Request changes</button>
+                </div>
+            </form>
+        </dialog>
+
+        <dialog ref="sendBackDialog" class="dialog" aria-labelledby="send-back-title">
+            <form @submit.prevent="confirmSendBack()" novalidate>
+                <h2 id="send-back-title">Send back for review</h2>
+                <p>Your referent gets an email with your reply and reviews the order again.</p>
+                <label for="send-back-message">What did you change?</label>
+                <textarea
+                    id="send-back-message"
+                    ref="sendBackMessage"
+                    v-model="sendBackMessage"
+                    rows="4"
+                    maxlength="1000"
+                    required
+                    placeholder="e.g. Replaced the servo with the SG90 from the catalogue. I put the cables back: we need 6 and the lab has only 2."
+                    :aria-invalid="!!sendBackError"
+                    aria-describedby="send-back-error"
+                ></textarea>
+                <p id="send-back-error" class="field-error" role="alert">{{ sendBackError }}</p>
+                <div class="dialog-actions">
+                    <button type="button" @click="$refs.sendBackDialog.close()">Not yet</button>
+                    <button type="submit" class="primary" :disabled="busy">Send back</button>
+                </div>
+            </form>
+        </dialog>
+
+        <dialog ref="rejectItemDialog" class="dialog" aria-labelledby="reject-item-title">
+            <form @submit.prevent="confirmRejectItem()" novalidate>
+                <h2 id="reject-item-title">Reject this item?</h2>
+                <p>
+                    <strong>{{ order.items[rejectItemIndex] && order.items[rejectItemIndex].name }}</strong> won't be ordered;
+                    the rest of the order goes on. {{ order.requestedBy }} will receive your reason by email.
+                </p>
+                <label for="reject-item-reason">Reason</label>
+                <textarea
+                    id="reject-item-reason"
+                    ref="rejectItemReason"
+                    v-model="rejectItemReason"
+                    rows="3"
+                    maxlength="1000"
+                    required
+                    :aria-invalid="!!rejectItemError"
+                    aria-describedby="reject-item-error"
+                ></textarea>
+                <p id="reject-item-error" class="field-error" role="alert">{{ rejectItemError }}</p>
+                <div class="dialog-actions">
+                    <button type="button" @click="$refs.rejectItemDialog.close()">Keep it</button>
+                    <button type="submit" class="danger" :disabled="busy">Reject item</button>
                 </div>
             </form>
         </dialog>
@@ -844,6 +1170,42 @@ export default {
     color: var(--text-muted);
 }
 
+.changes-note {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    margin: calc(-1 * var(--space-3)) 0 0 0;
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius);
+    border: 1px solid var(--orange);
+    background-color: color-mix(in oklch, var(--orange) 10%, var(--bg));
+}
+
+.changes-note .material-symbols-outlined {
+    color: var(--orange);
+}
+
+.changes-note p {
+    margin: 0;
+}
+
+.changes-note-title {
+    font-size: var(--font-sm);
+    color: var(--text-muted);
+}
+
+.changes-note-message {
+    color: var(--text);
+    white-space: pre-line;
+}
+
+.put-back {
+    margin-left: var(--space-2);
+    min-height: 2rem;
+    padding: 0 var(--space-3);
+    font-size: var(--font-sm);
+}
+
 .archived-note {
     display: flex;
     align-items: flex-start;
@@ -902,10 +1264,48 @@ export default {
     text-transform: capitalize;
 }
 
+.item-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+}
+
+.rejected-name {
+    text-decoration: line-through;
+    color: var(--text-muted);
+}
+
+.item-rejection {
+    display: block;
+    margin-top: var(--space-1);
+    font-size: var(--font-sm);
+    color: var(--red);
+}
+
 #tags-div {
     display: flex;
     flex-direction: row;
     gap: 0.5rem;
+}
+
+.stock-legend {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1) var(--space-4);
+    margin: var(--space-2) 0 0 0;
+    font-size: var(--font-sm);
+}
+
+.stock-legend > span[class] {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+}
+
+.stock-legend .material-symbols-outlined {
+    font-size: 1.1rem;
 }
 
 .orderview-table input[type="number"] {
@@ -961,8 +1361,12 @@ export default {
         padding-top: 0.5rem;
     }
 
-    .orderview-table .col-actions button {
-        width: 100%;
+    .orderview-table .col-actions button:not(.icon-button) {
+        flex: 1;
+    }
+
+    .orderview-table .item-actions {
+        justify-content: flex-start;
     }
 
     .orderview-table .col-actions .center-both {
@@ -991,26 +1395,110 @@ export default {
     align-items: center;
 }
 
-#approval-buttons {
+/* Actions in the summary card: main action first, occasional ones after, More at the far right */
+.order-actions {
     display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-3) var(--space-5);
     flex-wrap: wrap;
-    width: 100%;
-    gap: 0.75rem 1rem;
-    padding-top: 2rem;
 }
 
-#approval-buttons > .center-row {
+.order-actions-main {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+}
+
+.order-actions button, .section-header button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+}
+
+.order-actions button .material-symbols-outlined,
+.section-header button .material-symbols-outlined {
+    font-size: 1.25rem;
+}
+
+/* Cancelling is rare and undoable only by asking again: present but quiet */
+button.quiet-danger {
+    border-color: transparent;
+    background: none;
+    color: var(--red);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    button.quiet-danger:hover:not(:disabled) {
+        border-color: var(--red);
+    }
+}
+
+.more-actions {
+    position: relative;
+    margin-left: auto;
+}
+
+.more-actions-list {
+    position: absolute;
+    right: 0;
+    top: calc(100% + var(--space-1));
+    z-index: 20;
+    min-width: 14rem;
+    margin: 0;
+    padding: var(--space-1);
+    list-style: none;
+    border: 1px solid var(--border-muted);
+    border-radius: var(--radius);
+    background-color: var(--bg-light);
+    box-shadow: 0 6px 20px rgb(0 0 0 / 0.25);
+}
+
+.more-actions-list button {
+    width: 100%;
+    white-space: nowrap;
+    justify-content: flex-start;
+    border-color: transparent;
+    background: none;
+    text-align: left;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
     flex-wrap: wrap;
 }
 
 @media (max-width: 47.99rem) {
-    #approval-buttons > button,
-    #approval-buttons > .center-row,
-    #approval-buttons > .center-row > * {
-        flex: 1 1 100%;
+    /* Phones: the main action gets its own full-width line, the others share the next ones */
+    .order-actions, .order-actions-main {
+        width: 100%;
+    }
+
+    .order-actions-main > button {
+        flex: 1 1 auto;
+    }
+
+    .order-actions-main > button.primary {
+        flex-basis: 100%;
+    }
+
+    .more-actions {
+        width: 100%;
+    }
+
+    .more-actions > button {
+        width: 100%;
+    }
+
+    .more-actions-list {
+        left: 0;
+        right: 0;
     }
 }
-
 
 #updates {
     padding: 0;

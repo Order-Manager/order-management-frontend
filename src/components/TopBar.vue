@@ -5,12 +5,16 @@ import { doc } from 'firebase/firestore'
 import { computed, ref } from 'vue'
 
 import Tab from './Tab.vue'
+import AccountSwitcher from './accountSwitcher.js'
 
 const systemDark = window.matchMedia('(prefers-color-scheme: dark)')
 
 export default {
     components: {
         Tab
+    },
+    data() {
+        return { accountSwitcher: AccountSwitcher }
     },
     methods: {
         closeTab(returnFocus) {
@@ -42,9 +46,10 @@ export default {
         const userData = useDocument(computed(() => currentUser.value && doc(db, 'admins', currentUser.value.uid)));
         const links = computed(() => [
             { to: '/', label: 'Orders' },
+            { to: '/parts', label: 'Parts' },
             ...(userData.value && userData.value.isIR ? [
                 { to: '/suppliers', label: 'Suppliers' },
-                { to: '/tags', label: 'Tags' },
+                { to: '/categories', label: 'Categories' },
             ] : []),
         ]);
 
@@ -84,6 +89,7 @@ export default {
                     <span class="material-symbols-outlined" aria-hidden="true">{{ theme === 'dark' ? 'light_mode' : 'dark_mode' }}</span>
                 </button>
                 <template v-if="currentUser">
+                    <component :is="accountSwitcher" v-if="accountSwitcher" class="wide-only" />
                     <p class="wide-only user-email">{{ currentUser.email }}</p>
                     <router-link to="/signout" class="button-link wide-only">Sign out</router-link>
                     <button

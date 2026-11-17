@@ -1,7 +1,12 @@
 <script>
 
 // Phone menu: drops down under the top bar with the section links and the account
+import AccountSwitcher from './accountSwitcher.js'
+
 export default {
+    data() {
+        return { accountSwitcher: AccountSwitcher }
+    },
     emits: ['close'],
     props: {
         links: Array,
@@ -35,6 +40,7 @@ export default {
             </ul>
             <div id="side-tab-account">
                 <p>Signed in as <strong>{{ email }}</strong></p>
+                <component :is="accountSwitcher" v-if="accountSwitcher" />
                 <router-link to="/signout" class="button-link" @click="$emit('close', false)">Sign out</router-link>
             </div>
         </nav>

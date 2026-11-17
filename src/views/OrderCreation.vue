@@ -1,5 +1,6 @@
 <script>
-    import TagComponent from '../components/Tags.vue'
+    import CatalogPicker from '../components/CatalogPicker.vue'
+    import { cart, partToItem, removeSupplierFromCart } from '../utils/catalog.js'
     import {
         ref
     } from 'vue'
@@ -19,16 +20,29 @@
         useCurrentUser
     } from "vuefire";
 
-    import { tagsTypes, MIN_JUSTIFICATION, JUSTIFICATION_PLACEHOLDER } from '../utils/definitions'
+    import { ORDER_CATEGORIES, MIN_JUSTIFICATION, JUSTIFICATION_PLACEHOLDER } from '../utils/definitions'
     import { formatEuros, orderTotal } from '../utils/dates.js'
     import { displayName } from '../utils/people.js'
 
     import { useToast } from "vue-toastification";
 
 
+    // The "not in the list" choice for projects
+    const OTHER = '__other'
+
     export default {
         components: {
-            TagComponent
+            CatalogPicker
+        },
+        created() {
+            // Coming from the Parts page: start with that supplier's share of the cart
+            const supplier = this.$route.query.cart;
+            const lines = cart.filter(line => line.supplier === supplier);
+            if (lines.length) {
+                this.items = lines.map(line => partToItem(line, line.quantity));
+                this.fromCart = supplier;
+                this.wantedSupplier = supplier;
+            }
         },
         methods: {
             // One message per field, keyed by the field's id; empty when the form is valid
@@ -36,7 +50,13 @@
                 const errors = {};
                 if (this.title.trim().length === 0) errors.title = "Give your order a title.";
                 if (!this.referents.some(referent => referent.id === this.referentId)) errors.referent = "Choose your referent.";
-                if (this.selectedTags.length === 0) errors.tags = "Select at least one tag.";
+                if (!ORDER_CATEGORIES[this.category]) {
+                    errors.category = "Choose what the order is for.";
+                } else if (!this.categoryChoice) {
+                    errors['category-value'] = `Choose the ${ORDER_CATEGORIES[this.category].field.toLowerCase()}.`;
+                } else if (this.categoryChoice === OTHER && !this.otherProject.trim()) {
+                    errors['category-value'] = "Type the project name.";
+                }
                 if (this.items.length === 0) errors.items = "Add at least one item.";
                 // Drafts can be saved half-written; the justification is required to submit
                 const justification = this.comment.trim().length;
@@ -70,7 +90,8 @@
                     this.$nextTick(() => {
                         const selector = this.errors.title ? '#title'
                             : this.errors.referent ? '#referent'
-                            : this.errors.tags ? '.tag-tab button, #tags-types-div button'
+                            : this.errors.category ? 'input[name="category"]'
+                            : this.errors['category-value'] ? (this.categoryChoice === OTHER ? '#other-project' : '#category-value')
                             : this.errors.items ? '#add-item-button'
                             : this.errors.comment && Object.keys(this.errors).length === 1 ? '#comment'
                             : '[aria-invalid="true"]';
@@ -101,12 +122,14 @@
                         items,
                         comment: this.comment,
                         updates: [],
-                        tags: this.selectedTags.map(tag => tag.id),
+                        ...this.categoryFields(),
                         priority: this.priority,
                         archived: false
                     });
 
                     try { localStorage.setItem('orderTipsSeen', '1') } catch (e) {}
+                    // Those parts are ordered now; the rest of the cart stays for the other suppliers
+                    if (this.fromCart && this.fromCart === this.selectedSupplier.name) removeSupplierFromCart(this.fromCart);
                     this.showSuccess(this.isDraft ? "Draft saved." : "Order created. A referent will review it.");
                     this.$router.push('/');
                 } catch (error) {
@@ -126,6 +149,12 @@
                 return this.errors[id] || "";
             },
             formatEuros, orderTotal, displayName,
+            // category, categoryValue and, when picked from the list, categoryId
+            categoryFields() {
+                if (this.categoryChoice === OTHER) return { category: this.category, categoryValue: this.otherProject.trim() };
+                const tag = this.tags.find(t => t.id === this.categoryChoice);
+                return { category: this.category, categoryValue: tag.name, categoryId: tag.id };
+            },
             justificationCount() {
                 return this.comment.trim().length;
             },
@@ -156,6 +185,23 @@
             },
             removeItem(index) {
                 this.items.splice(index, 1);
+            },
+            // Rows the student hasn't started filling in
+            isBlank(item) {
+                return !item.name.trim() && !item.link.trim();
+            },
+            addFromCatalog(part) {
+                if (!this.hasItems) {
+                    const supplier = this.suppliers.find(s => s.name === part.supplier);
+                    if (supplier) this.selectedSupplier = supplier;
+                }
+                const existing = this.items.find(item => item.link === part.link);
+                if (existing) {
+                    existing.quantity = Number(existing.quantity) + 1;
+                    return;
+                }
+                // Replace the empty starter row rather than leaving it to fail validation
+                this.items = [...this.items.filter(item => !this.isBlank(item)), partToItem(part)];
             },
             async pasteItemFromClipboard() {
                 try {
@@ -194,10 +240,15 @@
                 referentId: '',
                 comment: '',
                 priority: 'low',
+                category: '', // project, stock or asso
+                categoryChoice: '', // a tag id, or OTHER for a project not in the list
+                otherProject: '',
                 errors: {},
                 attempted: false,
                 formMessage: '',
                 submitting: false,
+                fromCart: '', // the supplier whose cart parts this order started with
+                wantedSupplier: '', // supplier to select once the list has loaded
                 tipsOpen: (() => { try { return !localStorage.getItem('orderTipsSeen') } catch (e) { return true } })()
             }
         },
@@ -215,17 +266,24 @@
             const tags = useCollection(collection(db, 'tags'));
             // Who students can pick as their referent (admins flagged isReferent)
             const referentsRaw = useCollection(query(collection(db, 'admins'), where('isReferent', '==', true)));
-            const selectedTags = ref([]);
 
             const toast = useToast();
 
             return {
-                suppliers, user, tags, tagsTypes, selectedTags, toast, MIN_JUSTIFICATION, JUSTIFICATION_PLACEHOLDER, referentsRaw
+                suppliers, user, tags, ORDER_CATEGORIES, OTHER, toast, MIN_JUSTIFICATION, JUSTIFICATION_PLACEHOLDER, referentsRaw
             }
         },
         computed: {
             referents() {
                 return [...this.referentsRaw].sort((a, b) => displayName(a.email).localeCompare(displayName(b.email)));
+            },
+            hasItems() {
+                return this.items.some(item => !this.isBlank(item));
+            },
+            // The choices for the picked category: its visible tags, by name
+            categoryOptions() {
+                return this.tags.filter(tag => tag.type === this.category && !tag.hidden)
+                    .sort((a, b) => a.name.localeCompare(b.name));
             },
         },
         watch: {
@@ -247,16 +305,26 @@
                     this.revalidate();
                 }
             },
-            selectedTags: {
-                deep: true,
-                handler() {
-                    this.revalidate();
-                }
+            category() {
+                this.categoryChoice = '';
+                this.revalidate();
+            },
+            categoryChoice() {
+                this.revalidate();
+            },
+            otherProject() {
+                this.revalidate();
             },
             suppliers: {
                 immediate: true,
                 handler() {
-                    this.selectedSupplier = this.suppliers[0];
+                    const wanted = this.suppliers.find(s => s.name === this.wantedSupplier);
+                    if (wanted) {
+                        this.selectedSupplier = wanted;
+                        this.wantedSupplier = '';
+                    } else if (!this.suppliers.some(s => s.id === this.selectedSupplier?.id)) {
+                        this.selectedSupplier = this.suppliers[0];
+                    }
                 }
             }
         }
@@ -310,16 +378,35 @@
                     <p id="supplier-hint" class="blue" style="margin: 0">The links of the items must start with <a :href="selectedSupplier ? selectedSupplier.webpage : ''">{{ selectedSupplier ? selectedSupplier.webpage : '' }}</a>. If your supplier is not in the list, please contact <a href="mailto:dvic@devinci.fr">dvic@devinci.fr</a>.</p>
                 </div>
             </div>
-            <fieldset class="order-form-category" aria-describedby="tags-error">
-                <legend class="category-label">Tags</legend>
-                <div class="full-width">
-                    <p id="selected-tags" aria-live="polite">
-                        <span class="visually-hidden">Selected tags: </span>
-                        <span v-if="selectedTags.length === 0">None selected</span>
-                        <span v-else>{{ selectedTags.map(tag => tag.name).join(", ") }}</span>
-                    </p>
-                    <TagComponent :selectedTags="selectedTags" />
-                    <p id="tags-error" class="field-error">{{ fieldError('tags') }}</p>
+            <fieldset class="order-form-category" aria-describedby="category-error">
+                <legend class="category-label">For</legend>
+                <div class="field">
+                    <div class="purpose-choices">
+                        <label v-for="(choice, key) in ORDER_CATEGORIES" :key="key" class="purpose-choice" :class="{ selected: category === key }">
+                            <input type="radio" name="category" :value="key" v-model="category" :aria-invalid="!!fieldError('category')">
+                            <span class="material-symbols-outlined" aria-hidden="true">{{ choice.icon }}</span>
+                            <span class="purpose-text">
+                                <span class="purpose-label">{{ choice.label }}</span>
+                                <span class="purpose-hint">{{ choice.hint }}</span>
+                            </span>
+                        </label>
+                    </div>
+                    <p id="category-error" class="field-error">{{ fieldError('category') }}</p>
+                    <div v-if="category" class="purpose-value">
+                        <label for="category-value">{{ ORDER_CATEGORIES[category].field }}</label>
+                        <select id="category-value" v-model="categoryChoice" required
+                            :aria-invalid="!!fieldError('category-value') && categoryChoice !== OTHER" aria-describedby="category-value-error">
+                            <option value="" disabled>Choose…</option>
+                            <option v-for="tag in categoryOptions" :key="tag.id" :value="tag.id">{{ tag.name }}</option>
+                            <option v-if="ORDER_CATEGORIES[category].allowOther" :value="OTHER">Not in the list…</option>
+                        </select>
+                        <template v-if="categoryChoice === OTHER">
+                            <label for="other-project">Project name</label>
+                            <input id="other-project" type="text" v-model="otherProject" maxlength="100" required
+                                :aria-invalid="!!fieldError('category-value')" aria-describedby="category-value-error">
+                        </template>
+                        <p id="category-value-error" class="field-error">{{ fieldError('category-value') }}</p>
+                    </div>
                 </div>
             </fieldset>
             <fieldset class="order-form-category">
@@ -404,7 +491,12 @@
                         <button type="button" class="icon-button add-item" v-on:click="pasteItemFromClipboard()" aria-label="Paste item" title="Paste item">
                             <span class="material-symbols-outlined" aria-hidden="true">content_paste</span>
                         </button>
+                        <button type="button" class="add-from-catalog" @click="$refs.picker.open()">
+                            <span class="material-symbols-outlined" aria-hidden="true">inventory_2</span>
+                            Add from catalogue
+                        </button>
                     </div>
+                    <CatalogPicker ref="picker" :supplier="selectedSupplier ? selectedSupplier.name : ''" :locked="hasItems" @add="addFromCatalog" />
                 </div>
             </fieldset>
             <div class="order-form-category">
@@ -475,7 +567,7 @@
             min-width: 0;
         }
 
-        #title, #selected-tags, #comment {
+        #title, #comment {
             width: 100%;
             box-sizing: border-box;
         }
@@ -549,15 +641,70 @@
         box-sizing: border-box;
     }
 
-    #selected-tags {
+    .purpose-choices {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+        gap: var(--space-2);
+    }
+
+    .purpose-choice {
         display: flex;
-        align-items: center;
-        margin: 0;
-        background-color: var(--color-primary);
-        width: calc(100% - 2rem);
-        min-height: 2rem;
-        border-radius: 0.5rem;
-        padding: 0.5rem 1rem;
+        align-items: flex-start;
+        gap: var(--space-2);
+        padding: var(--space-3);
+        border: 1px solid var(--border-muted);
+        border-radius: var(--radius);
+        background-color: var(--bg);
+        font-size: 1rem;
+        font-weight: 400;
+        cursor: pointer;
+    }
+
+    .purpose-choice.selected {
+        border-color: var(--link);
+        background-color: color-mix(in oklch, var(--link) 10%, var(--bg));
+    }
+
+    .purpose-choice input {
+        margin-top: 0.15rem;
+    }
+
+    .purpose-choice .material-symbols-outlined {
+        color: var(--text-muted);
+    }
+
+    .purpose-text {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+    }
+
+    .purpose-label {
+        color: var(--text);
+        font-weight: 600;
+    }
+
+    .purpose-hint {
+        color: var(--text-muted);
+        font-size: 0.9rem;
+    }
+
+    .purpose-value {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-1);
+        max-width: 24rem;
+    }
+
+    .purpose-value input {
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+        .purpose-choice:hover {
+            border-color: var(--border-hover);
+        }
     }
 
 
@@ -584,6 +731,13 @@
 
     .add-item {
         font-size: 2rem;
+        margin: 0.5rem;
+    }
+
+    .add-from-catalog {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-2);
         margin: 0.5rem;
     }
 

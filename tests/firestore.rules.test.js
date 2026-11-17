@@ -17,6 +17,7 @@ import {
     getDoc,
     getDocs,
     query,
+    serverTimestamp,
     setDoc,
     updateDoc,
     where,
@@ -51,7 +52,9 @@ function order(owner, overrides = {}) {
         items: [{ type: 'item', name: 'Sheet', link: 'https://rs-online.com/a', quantity: '1', price: '3' }],
         comment: '',
         updates: [{ type: 'order-creation', date: Timestamp.now(), author: 'system' }],
-        tags: ['t1'],
+        category: 'project',
+        categoryValue: 'Robot arm',
+        categoryId: 't1',
         priority: 'low',
         referent: ADMIN.email,
         referentId: ADMIN.uid,
@@ -162,6 +165,19 @@ describe('orders: creating', () => {
         await assertFails(addDoc(collection(db(STUDENT), 'orders'), order(STUDENT, { updates: [], referentId: 'nobody' })))
     })
 
+    test('needs a category and its value', async () => {
+        const base = order(STUDENT, { updates: [] })
+        const { category, categoryValue, categoryId, ...noCategory } = base
+        await assertFails(addDoc(collection(db(STUDENT), 'orders'), noCategory))
+        await assertFails(addDoc(collection(db(STUDENT), 'orders'), { ...base, category: 'equipment' }))
+        await assertFails(addDoc(collection(db(STUDENT), 'orders'), { ...base, categoryValue: '  ' }))
+        await assertFails(addDoc(collection(db(STUDENT), 'orders'), { ...base, categoryValue: 'x'.repeat(101) }))
+        // A project typed in rather than picked from the list has no id
+        const { categoryId: _, ...typedProject } = base
+        await assertSucceeds(addDoc(collection(db(STUDENT), 'orders'), typedProject))
+        await assertSucceeds(addDoc(collection(db(STUDENT), 'orders'), { ...base, category: 'asso', categoryValue: 'Fablab', categoryId: 'fablab' }))
+    })
+
     test('cannot pre-fill the history', async () => {
         await assertFails(addDoc(collection(db(STUDENT), 'orders'), order(STUDENT)))
     })
@@ -190,6 +206,27 @@ describe('orders: owner updates', () => {
         await assertSucceeds(updateDoc(doc(db(STUDENT), 'orders/draft'), edit))
         await seed('orders/o2', order(STUDENT, { status: 'ordered' }))
         await assertFails(updateDoc(doc(db(STUDENT), 'orders/o2'), edit))
+    })
+
+    test('edit items and cancel when changes are requested', async () => {
+        await seed('orders/o2', order(STUDENT, { status: 'changesRequested' }))
+        const items = [{ type: 'item', name: 'Sheet', link: 'https://rs-online.com/b', quantity: '2', price: '3' }]
+        await assertSucceeds(updateDoc(doc(db(STUDENT), 'orders/o2'), { items, lastItemsUpdatedBy: STUDENT.email, ignoreItemsModification: false }))
+        await assertSucceeds(updateDoc(doc(db(STUDENT), 'orders/o2'), { status: 'cancelled', cancelledBy: STUDENT.email }))
+    })
+
+    test('send back for review with a reply, only from changes requested', async () => {
+        await seed('orders/o2', order(STUDENT, { status: 'changesRequested' }))
+        const sendBack = (message) => ({ status: 'pendingIR', sentBackMessage: message, sentBackAt: serverTimestamp() })
+        await assertFails(updateDoc(doc(db(STUDENT), 'orders/o2'), sendBack('   ')))
+        await assertFails(updateDoc(doc(db(STUDENT), 'orders/o2'), { status: 'processingOrder', sentBackMessage: 'Done', sentBackAt: serverTimestamp() }))
+        await assertFails(updateDoc(doc(db(OTHER), 'orders/o2'), sendBack('Done')))
+        await assertSucceeds(updateDoc(doc(db(STUDENT), 'orders/o2'), sendBack('Swapped the servo for the one in the catalogue.')))
+        await assertFails(updateDoc(doc(db(STUDENT), 'orders/o1'), sendBack('Done')))
+    })
+
+    test('cannot request changes on own order', async () => {
+        await assertFails(updateDoc(doc(db(STUDENT), 'orders/o1'), { status: 'changesRequested' }))
     })
 
     test('add a comment', async () => {
@@ -287,11 +324,23 @@ describe('orders: admin updates', () => {
 })
 
 describe('reference data and admins', () => {
-    test('only admins write suppliers, tags and inventory', async () => {
-        for (const path of ['suppliers/s2', 'tags/t2', 'inventory_items/i1', 'inventory_categories/c1']) {
+    test('only admins write suppliers, tags and the parts catalogue', async () => {
+        for (const path of ['suppliers/s2', 'tags/t2', 'catalog/p1']) {
             await assertFails(setDoc(doc(db(STUDENT), path), { name: 'x' }))
             await assertSucceeds(setDoc(doc(db(ADMIN), path), { name: 'x' }))
         }
+    })
+
+    test('every Devinci user reads the parts catalogue, outsiders do not', async () => {
+        await seed('catalog/p2', { name: 'XIAO ESP32-S3' })
+        await assertSucceeds(getDocs(collection(db(STUDENT), 'catalog')))
+        await assertFails(getDocs(collection(db(OUTSIDER), 'catalog')))
+        await assertFails(getDocs(collection(db(STUDENT, false), 'catalog')))
+    })
+
+    test('the old inventory collections are closed', async () => {
+        await assertFails(getDocs(collection(db(ADMIN), 'inventory_items')))
+        await assertFails(setDoc(doc(db(ADMIN), 'inventory_items/i1'), { name: 'x' }))
     })
 
     test('users read their own admin doc and the referents, nothing else', async () => {

@@ -3,8 +3,8 @@
 // `node scripts/seed-emulator.mjs link <email>` after you request it in the app.
 
 const PROJECT = 'demo-orders'
-const FIRESTORE = `http://127.0.0.1:8080/v1/projects/${PROJECT}/databases/(default)/documents`
-const AUTH = `http://127.0.0.1:9099`
+const FIRESTORE = `http://${process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8080'}/v1/projects/${PROJECT}/databases/(default)/documents`
+const AUTH = `http://${process.env.FIREBASE_AUTH_EMULATOR_HOST || '127.0.0.1:9099'}`
 const headers = { Authorization: 'Bearer owner', 'Content-Type': 'application/json' }
 
 const ADMIN = { uid: 'admin', email: 'admin@devinci.fr' }
@@ -61,17 +61,20 @@ await setDoc('admins/not-a-referent', { email: 'former.engineer@devinci.fr', isI
 
 const suppliers = [
     ['rs', 'RS Components', 'https://fr.rs-online.com'],
-    ['amazon', 'Amazon', 'https://www.amazon.fr'],
-    ['mouser', 'Mouser', 'https://www.mouser.fr'],
+    ['amazon', 'Amazon FR', 'https://amazon.fr/'],
+    ['mouser', 'Mouser', 'https://mouser.fr/'],
+    ['digikey', 'Digikey', 'https://www.digikey.fr/'],
     ['lcsc', 'LCSC', 'https://www.lcsc.com'],
 ]
 for (const [id, name, webpage] of suppliers) await setDoc(`suppliers/${id}`, { name, webpage, hidden: false })
 
+// The choices of each order category (Categories page). The Fablab is an association.
 const tags = [
     ['octon', 'Octon', 'project'], ['marblebot', 'MarbleBot', 'project'], ['compass', 'Compass', 'project'],
-    ['fablab', 'Fablab consumables', 'stock'], ['electronics', 'Electronics', 'stock'],
-    ['bde', 'BDE', 'asso'], ['robotics-club', 'Robotics club', 'asso'],
+    ['electronics', 'Electronics', 'stock'], ['creakits', 'CreaKits', 'stock'], ['tools', 'Tools and equipment', 'stock'],
+    ['fablab', 'Fablab', 'asso'], ['bde', 'BDE', 'asso'], ['robotics-club', 'Robotics club', 'asso'],
 ]
+const tagById = Object.fromEntries(tags.map(([id, name, type]) => [id, { id, name, type }]))
 for (const [id, name, type] of tags) await setDoc(`tags/${id}`, { name, type, hidden: false })
 
 const item = (name, link, quantity, price, state = {}) => ({ type: 'item', name, link, quantity: String(quantity), price: String(price), ...state })
@@ -87,7 +90,7 @@ const orders = [
         updates: [created(1), comment(1, STUDENT.email, 'Needed before the demo on Friday if possible.')],
     },
     {
-        id: 'acrylic', owner: STUDENT, status: 'processingOrder', title: 'Acrylic sheets', supplier: 'Amazon', tags: ['fablab'], priority: 'medium', created: 6,
+        id: 'acrylic', owner: STUDENT, status: 'processingOrder', title: 'Acrylic sheets', supplier: 'Amazon FR', tags: ['fablab'], priority: 'medium', created: 6,
         items: [item('Acrylic sheet 3x200x300mm, transparent', 'https://www.amazon.fr/dp/B000000001', 10, 4.5)],
         updates: [created(6), event('review-ir-approved', 5, ADMIN.email)],
     },
@@ -106,7 +109,7 @@ const orders = [
             comment(9, ADMIN.email, 'Ordered with standard shipping, LCSC says 7 to 10 days. I split the connectors into a second parcel because the first one was out of stock; they should arrive a few days later than the rest.')],
     },
     {
-        id: 'filament', owner: STUDENT, status: 'received', title: 'PLA filament', supplier: 'Amazon', tags: ['fablab'], priority: 'low', created: 20,
+        id: 'filament', owner: STUDENT, status: 'received', title: 'PLA filament', supplier: 'Amazon FR', tags: ['fablab'], priority: 'low', created: 20,
         items: [item('PLA 1.75mm 1kg black', 'https://www.amazon.fr/dp/B000000002', 3, 19.99, { ordered: true, delivered: true })],
         updates: [created(20), event('review-ir-approved', 19, ADMIN.email), event('order-processed', 18, ADMIN.email), event('order-received', 15, ADMIN.email)],
     },
@@ -116,12 +119,12 @@ const orders = [
         updates: [created(60), event('review-ir-approved', 59, ADMIN.email), event('order-processed', 58, ADMIN.email), event('order-received', 52, ADMIN.email), event('order-completed', 50, ADMIN.email)],
     },
     {
-        id: 'refused', owner: STUDENT, status: 'refusedIR', title: 'Gaming mouse', supplier: 'Amazon', tags: ['bde'], priority: 'low', created: 30,
+        id: 'refused', owner: STUDENT, status: 'refusedIR', title: 'Gaming mouse', supplier: 'Amazon FR', tags: ['bde'], priority: 'low', created: 30,
         items: [item('Wireless gaming mouse', 'https://www.amazon.fr/dp/B000000003', 1, 89),],
         updates: [created(30), comment(29, ADMIN.email, 'This is not lab equipment, please ask the BDE budget instead.'), event('review-ir-refused', 29, ADMIN.email)],
     },
     {
-        id: 'draft', owner: STUDENT, status: 'draft', title: 'Magnets (draft)', supplier: 'Amazon', tags: ['marblebot'], priority: 'low', created: 2,
+        id: 'draft', owner: STUDENT, status: 'draft', title: 'Magnets (draft)', supplier: 'Amazon FR', tags: ['marblebot'], priority: 'low', created: 2,
         items: [item('Neodymium magnet 10x3mm', 'https://www.amazon.fr/dp/B000000004', 50, 0.3)],
         updates: [created(2)],
     },
@@ -137,7 +140,7 @@ const orders = [
         updates: [created(240)],
     },
     {
-        id: 'stale-refused', owner: STUDENT, status: 'refusedIR', title: 'Old headphones request', supplier: 'Amazon', tags: ['bde'], priority: 'low', created: 220,
+        id: 'stale-refused', owner: STUDENT, status: 'refusedIR', title: 'Old headphones request', supplier: 'Amazon FR', tags: ['bde'], priority: 'low', created: 220,
         items: [item('Headphones', 'https://www.amazon.fr/dp/B000000009', 1, 59)],
         updates: [created(220), event('review-ir-refused', 210, ADMIN.email)],
     },
@@ -158,7 +161,9 @@ for (const o of orders) {
     await setDoc(`orders/${o.id}`, {
         creationDate: daysAgo(o.created), lastUpdate: total, requestedBy: o.owner.email, requestedById: o.owner.uid,
         status: o.status, title: o.title, supplier: o.supplier, items: o.items, comment: '', updates: o.updates,
-        tags: o.tags, priority: o.priority, ...(o.cancelledBy ? { cancelledBy: o.cancelledBy } : {}),
+        // An order is for one thing: its first tag gives the category
+        category: tagById[o.tags[0]].type, categoryValue: tagById[o.tags[0]].name, categoryId: o.tags[0],
+        priority: o.priority, archived: false, ...(o.cancelledBy ? { cancelledBy: o.cancelledBy } : {}),
     })
 }
 

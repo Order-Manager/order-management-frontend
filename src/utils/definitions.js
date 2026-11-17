@@ -47,6 +47,8 @@ export const updateTypesToMessage = {
     'order-received': "Order Delivered, waiting for pick up",
     'order-completed': "Order completed",
     'order-items-updated': "Order items updated",
+    'changes-requested': "Changes requested",
+    'sent-back': "Sent back for review",
     // Only found in older orders
     'review-pi-requested': "PI review requested",
     'review-pi-approved': "Approved by PI",
@@ -55,6 +57,7 @@ export const updateTypesToMessage = {
 export const statusTypesToMessage = {
     "draft": "Draft",
     "pendingIR": "Pending review",
+    "changesRequested": "Changes requested",
     "approvedIR": "Approved",
     "refusedIR": "Rejected",
     "processingOrder": "Approved",
@@ -67,6 +70,7 @@ export const statusTypesToMessage = {
 export const statusTypesToIcon = {
     "draft": "edit_note",
     "pendingIR": "hourglass_top",
+    "changesRequested": "rate_review",
     "approvedIR": "thumb_up",
     "refusedIR": "block",
     "processingOrder": "shopping_cart",
@@ -79,6 +83,7 @@ export const statusTypesToIcon = {
 export const statusTypesToColor = {
     "draft": "grey",
     "pendingIR": "orange",
+    "changesRequested": "orange",
     "refusedIR": "red",
     "processingOrder": "blue",
     "ordered": "blue",
@@ -99,6 +104,8 @@ export const updateTypesToColor = {
     "order-received": "blue",
     "order-completed": "green",
     "order-items-updated": "orange",
+    "changes-requested": "orange",
+    "sent-back": "blue",
 }
 
 export const updateTypesToIcon = {
@@ -112,6 +119,8 @@ export const updateTypesToIcon = {
     "order-received": "check",
     "order-completed": "check",
     "order-items-updated": "edit",
+    "changes-requested": "rate_review",
+    "sent-back": "reply",
 }
 
 // Minimum length of the justification students give when they submit an order
@@ -127,6 +136,25 @@ export const tagsTypes = [
     "stock",
     "asso"
 ]
+
+// What an order is for. The choices of each category are the tags of that type (Categories page);
+// only projects can be typed in when they aren't in the list yet.
+export const ORDER_CATEGORIES = {
+    project: { label: "Project", field: "Project name", icon: "science", hint: "A student or research project.", allowOther: true },
+    stock: { label: "Lab stock", field: "Stock", icon: "inventory_2", hint: "Parts or tools the lab keeps for everyone." },
+    asso: { label: "Association", field: "Association", icon: "groups", hint: "A student association, such as the Fablab or the BDE." },
+}
+
+// "Project · Robot arm"; older orders only have tags, shown by name
+export function orderCategoryText(order, tags = []) {
+    const category = ORDER_CATEGORIES[order.category]
+    if (category) {
+        const tag = order.categoryId && tags.find(t => t.id === order.categoryId)
+        return `${category.label} · ${tag ? tag.name : order.categoryValue}`
+    }
+    const names = (order.tags || []).map(id => tags.find(t => t.id === id)?.name).filter(Boolean)
+    return names.join(", ") || "None"
+}
 
 export const priorityToColor = {
     "low": "green",
